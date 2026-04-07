@@ -158,8 +158,10 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
   const [sortAsc, setSortAsc] = useState(true);
   const [addType, setAddType] = useState("quick");
   const [addPri, setAddPri] = useState(2);
+  const [addDate, setAddDate] = useState(dk(today()));
   const [toast, setToast] = useState({ msg: "", visible: false });
   const [calOpen, setCalOpen] = useState(false);
+  const [calMode, setCalMode] = useState("edit"); // "edit" | "add"
   const [calTaskId, setCalTaskId] = useState(null);
   const [calYear, setCalYear] = useState(today().getFullYear());
   const [calMonth, setCalMonth] = useState(today().getMonth());
@@ -209,7 +211,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
   const handleAdd = () => {
     const text = addRef.current?.value.trim();
     if (!text) return;
-    addTask({ text, priority: addPri, type: addType, date_key: key });
+    addTask({ text, priority: addPri, type: addType, date_key: addDate });
     addRef.current.value = "";
   };
 
@@ -222,13 +224,28 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
     const t = tasks.find((x) => x.id === id);
     if (!t) return;
     const d = parseKey(t.date_key);
+    setCalMode("edit");
     setCalTaskId(id);
     setCalYear(d.getFullYear());
     setCalMonth(d.getMonth());
     setCalOpen(true);
   };
 
+  const openAddCal = () => {
+    const d = parseKey(addDate);
+    setCalMode("add");
+    setCalTaskId(null);
+    setCalYear(d.getFullYear());
+    setCalMonth(d.getMonth());
+    setCalOpen(true);
+  };
+
   const pickDate = (k) => {
+    if (calMode === "add") {
+      setAddDate(k);
+      setCalOpen(false);
+      return;
+    }
     if (calTaskId == null) return;
     updateTask(calTaskId, { date_key: k });
     setCalOpen(false);
@@ -239,7 +256,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
     else flash(`${Math.abs(d)}일 전으로 이동했어요`);
   };
 
-  const selectedKey = calTaskId != null ? tasks.find((x) => x.id === calTaskId)?.date_key : "";
+  const selectedKey = calMode === "add" ? addDate : (calTaskId != null ? tasks.find((x) => x.id === calTaskId)?.date_key : "");
 
   const cardProps = {
     isMobile, onToggle: handleToggle, onUpdate: updateTask, onDel: deleteTask,
@@ -257,7 +274,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
 
   return (
     <>
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: isMobile ? "28px 14px 80px" : "36px 20px 80px" }}>
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: isMobile ? "28px 24px 80px" : "36px 20px 80px" }}>
 
         {/* Logout */}
         {user && (
@@ -328,33 +345,45 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
         <div style={{
           background: "var(--sf)", border: "1px solid var(--bd)", borderRadius: 14,
           padding: isMobile ? 12 : "14px 16px", marginBottom: 22,
-          display: "flex", gap: isMobile ? 8 : 10, alignItems: "center", flexWrap: "wrap",
+          display: "flex", flexDirection: "column", gap: 10,
         }}>
-          <div style={{ display: "flex", border: "1px solid var(--bd)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
-            {["quick", "project"].map((tp) => (
-              <button key={tp} onClick={() => setAddType(tp)} style={{
-                padding: "6px 12px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer",
-                background: addType === tp ? "var(--ink)" : "var(--sf)",
-                color: addType === tp ? "#fff" : "var(--ink2)",
-              }}>{tp === "quick" ? "빠른" : "프로젝트"}</button>
-            ))}
+          {/* Row 1: type, priority, date */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", border: "1px solid var(--bd)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
+              {["quick", "project"].map((tp) => (
+                <button key={tp} onClick={() => setAddType(tp)} style={{
+                  padding: "6px 12px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer",
+                  background: addType === tp ? "var(--ink)" : "var(--sf)",
+                  color: addType === tp ? "#fff" : "var(--ink2)",
+                }}>{tp === "quick" ? "빠른" : "프로젝트"}</button>
+              ))}
+            </div>
+            <select value={addPri} onChange={(e) => setAddPri(+e.target.value)} style={{
+              border: "1px solid var(--bd)", borderRadius: 8, padding: "6px 8px", fontSize: 13,
+              fontFamily: "inherit", background: "var(--sf)", cursor: "pointer", outline: "none",
+            }}>
+              <option value={1}>우선순위 1</option>
+              <option value={2}>우선순위 2</option>
+              <option value={3}>우선순위 3</option>
+            </select>
+            <button onClick={openAddCal} style={{
+              marginLeft: "auto", border: "1px solid var(--bd)", borderRadius: 8,
+              padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+              background: "var(--sf)", color: "var(--ink2)", fontFamily: "inherit", whiteSpace: "nowrap",
+            }}>{(() => { const d = parseKey(addDate); const diff = diffDays(d, today()); return diff === 0 ? "오늘" : diff === 1 ? "내일" : `${d.getMonth() + 1}/${d.getDate()}`; })()}</button>
           </div>
-          <input ref={addRef} placeholder="할 일 입력..." onKeyDown={(e) => e.key === "Enter" && handleAdd()} style={{
-            flex: 1, minWidth: isMobile ? 120 : 160, border: "1px solid var(--bd)", borderRadius: 8,
-            padding: "8px 12px", fontSize: 15, fontFamily: "inherit", outline: "none",
-          }} />
-          <select value={addPri} onChange={(e) => setAddPri(+e.target.value)} style={{
-            border: "1px solid var(--bd)", borderRadius: 8, padding: "6px 8px", fontSize: 13,
-            fontFamily: "inherit", background: "var(--sf)", cursor: "pointer", outline: "none",
-          }}>
-            <option value={1}>우선순위 1</option>
-            <option value={2}>우선순위 2</option>
-            <option value={3}>우선순위 3</option>
-          </select>
-          <button onClick={handleAdd} style={{
-            background: "var(--ink)", color: "#fff", border: "none", borderRadius: 8,
-            padding: "8px 18px", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
-          }}>+ 추가</button>
+          {/* Row 2: input, add button */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input ref={addRef} placeholder="할 일 입력..." onKeyDown={(e) => e.key === "Enter" && handleAdd()} style={{
+              flex: 1, border: "1px solid var(--bd)", borderRadius: 8,
+              padding: "8px 12px", fontSize: 15, fontFamily: "inherit", outline: "none",
+            }} />
+            <button onClick={handleAdd} style={{
+              background: "var(--ink)", color: "#fff", border: "none", borderRadius: 10,
+              width: 36, height: 36, fontSize: 20, fontWeight: 600, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>+</button>
+          </div>
         </div>
 
         {/* Task list */}
