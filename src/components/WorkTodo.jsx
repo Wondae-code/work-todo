@@ -391,69 +391,33 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
           padding: isMobile ? 12 : "14px 16px", marginBottom: 22,
           display: "flex", flexDirection: "column", gap: 10,
         }}>
-          {/* Mobile Row 0: date (right aligned) */}
-          {isMobile && (
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button onClick={openAddCal} style={{
-                border: "1px solid var(--bd)", borderRadius: 8,
-                padding: "6px 12px", cursor: "pointer",
-                background: "var(--sf)", color: "var(--ink2)",
-                display: "flex", alignItems: "center",
-              }}><Calendar size={13} /></button>
+          {/* Row 1: type, priority, date */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", border: "1px solid var(--bd)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
+              {["quick", "project"].map((tp) => (
+                <button key={tp} onClick={() => setAddType(tp)} style={{
+                  padding: "6px 12px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer",
+                  background: addType === tp ? "var(--ink)" : "var(--sf)",
+                  color: addType === tp ? "#fff" : "var(--ink2)",
+                }}>{tp === "quick" ? "빠른" : "프로젝트"}</button>
+              ))}
             </div>
-          )}
-          {/* Mobile Row 1: type + priority */}
-          {isMobile && (
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <div style={{ display: "flex", border: "1px solid var(--bd)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
-                {["quick", "project"].map((tp) => (
-                  <button key={tp} onClick={() => setAddType(tp)} style={{
-                    padding: "6px 12px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer",
-                    background: addType === tp ? "var(--ink)" : "var(--sf)",
-                    color: addType === tp ? "#fff" : "var(--ink2)",
-                  }}>{tp === "quick" ? "빠른" : "프로젝트"}</button>
-                ))}
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)", marginLeft: "auto" }}>우선순위</span>
-              <select value={addPri} onChange={(e) => setAddPri(+e.target.value)} style={{
-                border: "1px solid var(--bd)", borderRadius: 8, padding: "6px 8px", fontSize: 13,
-                fontFamily: "inherit", background: "var(--sf)", cursor: "pointer", outline: "none",
-              }}>
-                <option value={1}>높음</option>
-                <option value={2}>중간</option>
-                <option value={3}>낮음</option>
-              </select>
-            </div>
-          )}
-          {/* Desktop Row 1: type, priority, date */}
-          {!isMobile && (
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <div style={{ display: "flex", border: "1px solid var(--bd)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
-                {["quick", "project"].map((tp) => (
-                  <button key={tp} onClick={() => setAddType(tp)} style={{
-                    padding: "6px 12px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer",
-                    background: addType === tp ? "var(--ink)" : "var(--sf)",
-                    color: addType === tp ? "#fff" : "var(--ink2)",
-                  }}>{tp === "quick" ? "빠른" : "프로젝트"}</button>
-                ))}
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)", marginLeft: "auto" }}>우선순위</span>
-              <select value={addPri} onChange={(e) => setAddPri(+e.target.value)} style={{
-                border: "1px solid var(--bd)", borderRadius: 8, padding: "6px 8px", fontSize: 13,
-                fontFamily: "inherit", background: "var(--sf)", cursor: "pointer", outline: "none",
-              }}>
-                <option value={1}>높음</option>
-                <option value={2}>중간</option>
-                <option value={3}>낮음</option>
-              </select>
-              <button onClick={openAddCal} style={{
-                border: "1px solid var(--bd)", borderRadius: 8,
-                padding: "6px 12px", cursor: "pointer",
-                background: "var(--sf)", color: "var(--ink2)",
-                display: "flex", alignItems: "center",
-              }}><Calendar size={13} /></button>
-            </div>
-          )}
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)", marginLeft: "auto" }}>우선순위</span>
+            <select value={addPri} onChange={(e) => setAddPri(+e.target.value)} style={{
+              border: "1px solid var(--bd)", borderRadius: 8, padding: "6px 8px", fontSize: 13,
+              fontFamily: "inherit", background: "var(--sf)", cursor: "pointer", outline: "none",
+            }}>
+              <option value={1}>높음</option>
+              <option value={2}>중간</option>
+              <option value={3}>낮음</option>
+            </select>
+            <button onClick={openAddCal} style={{
+              border: "1px solid var(--bd)", borderRadius: 8,
+              padding: "6px 12px", cursor: "pointer",
+              background: "var(--sf)", color: "var(--ink2)",
+              display: "flex", alignItems: "center",
+            }}><Calendar size={13} /></button>
+          </div>
           {/* Row 2: input, add button */}
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <input ref={addRef} placeholder="할 일 입력..." onKeyDown={(e) => e.key === "Enter" && handleAdd()} style={{
