@@ -108,7 +108,7 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
       borderLeft: `4px solid ${isProj ? "var(--blue)" : "var(--green)"}`,
       opacity: t.done ? 0.5 : 1, transition: "box-shadow .15s",
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", flexWrap: "wrap" }}>
         <Check checked={t.done} onClick={() => onToggle(t.id)} />
         <textarea
           rows={1}
@@ -116,13 +116,13 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
           onChange={(e) => onUpdate(t.id, { text: e.target.value })}
           onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
           style={{
-            flex: 1, fontSize: 16, fontWeight: 500, lineHeight: 1.5, border: "none",
+            flex: 1, minWidth: 0, fontSize: 16, fontWeight: 500, lineHeight: 1.5, border: "none",
             background: "transparent", resize: "none", fontFamily: "inherit", color: "var(--ink)",
-            outline: "none", overflow: "hidden",
+            outline: "none", overflow: "hidden", wordBreak: "break-word",
             ...(t.done ? { textDecoration: "line-through", color: "var(--ink3)" } : {}),
           }}
         />
-        <div style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0, flexWrap: "wrap", ...(isMobile ? { order: 3, width: "100%", paddingLeft: 34 } : {}) }}>
           <Badge
             label={`우선순위 ${t.priority}`}
             variant={priV}
@@ -132,9 +132,13 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
           {isProj && subsTotal > 0 && (
             <Badge label={`${subsDone}/${subsTotal} 완료`} variant={allSubDone ? "progDone" : "prog"} />
           )}
+          <button className="hover-btn" onClick={() => onOpenCal(t.id)} style={{ ...hoverBtnS, ...(isMobile ? { opacity: 1 } : {}) }}>날짜 수정</button>
+          <button className="hover-btn" onClick={() => onDel(t.id)} style={{ ...hoverBtnS, ...(isMobile ? { opacity: 1 } : {}) }}>×</button>
         </div>
-        <button className="hover-btn" onClick={() => onOpenCal(t.id)} style={{ ...hoverBtnS, ...(isMobile ? { opacity: 1 } : {}) }}>날짜 수정</button>
-        <button className="hover-btn" onClick={() => onDel(t.id)} style={{ ...hoverBtnS, ...(isMobile ? { opacity: 1 } : {}) }}>×</button>
+        {!isMobile && <>
+          <button className="hover-btn" onClick={() => onOpenCal(t.id)} style={hoverBtnS}>날짜 수정</button>
+          <button className="hover-btn" onClick={() => onDel(t.id)} style={hoverBtnS}>×</button>
+        </>}
       </div>
       {isProj && (
         <SubList subs={t.subs || []} taskId={t.id}
