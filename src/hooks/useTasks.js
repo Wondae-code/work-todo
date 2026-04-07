@@ -216,6 +216,86 @@ export function useTasks(userId) {
     [userId]
   );
 
+  /* ── Export / Import ── */
+
+  const exportTasks = useCallback(() => {
+    const data = tasks.map((t) => ({
+      text: t.text,
+      done: t.done,
+      priority: t.priority,
+      type: t.type,
+      date_key: t.date_key,
+      subs: (t.subs || []).map((s) => ({ text: s.text, done: s.done })),
+    }));
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `work-todo-${dk(new Date())}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [tasks]);
+
+  const importTasks = useCallback(
+    async (jsonStr) => {
+      let raw;
+      try {
+        raw = JSON.parse(jsonStr);
+      } catch {
+        return { error: "올바른 JSON 형식이 아닙니다." };
+      }
+      if (!Array.isArray(raw)) return { error: "배열 형식이어야 합니다." };
+
+      let imported = 0;
+      for (const item of raw) {
+        const text = item.text;
+        if (!text) continue;
+        const priority = item.priority || 2;
+        const type = item.type || "quick";
+        // 이전 버전 호환: dateKey -> date_key
+        const date_key = item.date_key || item.dateKey || todayKey();
+        const done = !!item.done;
+        const subs = item.subs || [];
+
+        if (!userId) {
+          const taskId = Date.now() + imported;
+          setTasks((prev) => [
+            ...prev,
+            {
+              id: taskId, text, done, priority, type, date_key,
+              subs: subs.map((s, i) => ({ sid: taskId * 100 + i, text: s.text, done: !!s.done })),
+            },
+          ]);
+          imported++;
+          continue;
+        }
+
+        const { data, error } = await supabase
+          .from("tasks")
+          .insert({ user_id: userId, text, done, priority, type, date_key })
+          .select()
+          .single();
+
+        if (error || !data) continue;
+
+        if (subs.length > 0) {
+          const subRows = subs.map((s, i) => ({
+            task_id: data.id,
+            text: s.text,
+            done: !!s.done,
+            sort_order: i,
+          }));
+          await supabase.from("subtasks").insert(subRows);
+        }
+        imported++;
+      }
+
+      await fetchAll();
+      return { count: imported };
+    },
+    [userId, fetchAll]
+  );
+
   return {
     tasks,
     loading,
@@ -226,6 +306,8 @@ export function useTasks(userId) {
     addSub,
     updateSub,
     deleteSub,
+    exportTasks,
+    importTasks,
     refetch: fetchAll,
   };
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Check as CheckIcon, X, Plus, ChevronLeft, ChevronRight, Calendar, Trash2, LogOut } from "lucide-react";
+import { Check as CheckIcon, X, Plus, ChevronLeft, ChevronRight, Calendar, Trash2, LogOut, Download, Upload } from "lucide-react";
 import CalendarModal from "./CalendarModal";
 
 const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -158,7 +158,7 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
 /* ── Main ── */
 
 export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading }) {
-  const { addTask, updateTask, deleteTask, clearDone, addSub, updateSub, deleteSub } = taskActions;
+  const { addTask, updateTask, deleteTask, clearDone, addSub, updateSub, deleteSub, exportTasks, importTasks } = taskActions;
 
   const [curDate, setCurDate] = useState(today);
   const [filter, setFilter] = useState("all");
@@ -174,6 +174,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
   const [calMonth, setCalMonth] = useState(today().getMonth());
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
   const addRef = useRef();
+  const fileRef = useRef();
   const toastTimer = useRef();
 
   useEffect(() => {
@@ -193,6 +194,19 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2000);
   }, []);
+
+  const handleImport = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const result = await importTasks(ev.target.result);
+      if (result.error) flash(result.error);
+      else flash(`${result.count}개 할일을 불러왔어요`);
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }, [importTasks, flash]);
 
   /* ── Derived state ── */
   const key = dk(curDate);
@@ -283,9 +297,20 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
     <>
       <div style={{ maxWidth: 900, margin: "0 auto", padding: isMobile ? "28px 16px 80px" : "36px 20px 80px" }}>
 
-        {/* Logout */}
+        {/* Top bar */}
         {user && (
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 10 }}>
+            <button onClick={exportTasks} style={{
+              background: "none", border: "1px solid var(--bd)", borderRadius: 8,
+              padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "var(--ink3)",
+              cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center",
+            }}><Download size={12} style={{ marginRight: 4 }} />내보내기</button>
+            <button onClick={() => fileRef.current?.click()} style={{
+              background: "none", border: "1px solid var(--bd)", borderRadius: 8,
+              padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "var(--ink3)",
+              cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center",
+            }}><Upload size={12} style={{ marginRight: 4 }} />불러오기</button>
+            <input ref={fileRef} type="file" accept=".json" onChange={handleImport} style={{ display: "none" }} />
             <button onClick={onSignOut} style={{
               background: "none", border: "1px solid var(--bd)", borderRadius: 8,
               padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "var(--ink3)",
