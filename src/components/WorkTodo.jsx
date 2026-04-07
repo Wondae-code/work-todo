@@ -173,6 +173,8 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
   const [calYear, setCalYear] = useState(today().getFullYear());
   const [calMonth, setCalMonth] = useState(today().getMonth());
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState("");
   const addRef = useRef();
   const fileRef = useRef();
   const toastTimer = useRef();
@@ -195,7 +197,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
     toastTimer.current = setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2000);
   }, []);
 
-  const handleImport = useCallback((e) => {
+  const handleImportFile = useCallback((e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -203,10 +205,20 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
       const result = await importTasks(ev.target.result);
       if (result.error) flash(result.error);
       else flash(`${result.count}개 할일을 불러왔어요`);
+      setImportOpen(false);
     };
     reader.readAsText(file);
     e.target.value = "";
   }, [importTasks, flash]);
+
+  const handleImportText = useCallback(async () => {
+    if (!importText.trim()) return;
+    const result = await importTasks(importText);
+    if (result.error) flash(result.error);
+    else flash(`${result.count}개 할일을 불러왔어요`);
+    setImportText("");
+    setImportOpen(false);
+  }, [importText, importTasks, flash]);
 
   /* ── Derived state ── */
   const key = dk(curDate);
@@ -305,12 +317,11 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
               padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "var(--ink3)",
               cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center",
             }}><Download size={12} style={{ marginRight: 4 }} />내보내기</button>
-            <button onClick={() => fileRef.current?.click()} style={{
+            <button onClick={() => setImportOpen(true)} style={{
               background: "none", border: "1px solid var(--bd)", borderRadius: 8,
               padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "var(--ink3)",
               cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center",
             }}><Upload size={12} style={{ marginRight: 4 }} />불러오기</button>
-            <input ref={fileRef} type="file" accept=".json" onChange={handleImport} style={{ display: "none" }} />
             <button onClick={onSignOut} style={{
               background: "none", border: "1px solid var(--bd)", borderRadius: 8,
               padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "var(--ink3)",
@@ -463,6 +474,49 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
         onPick={pickDate} calYear={calYear} calMonth={calMonth}
         setCalYear={setCalYear} setCalMonth={setCalMonth}
       />
+
+      {/* Import modal */}
+      {importOpen && (
+        <div onClick={(e) => e.target === e.currentTarget && setImportOpen(false)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.35)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999,
+        }}>
+          <div style={{
+            background: "var(--sf)", borderRadius: 18, padding: 24, width: 420,
+            maxWidth: "90vw", boxShadow: "0 12px 40px rgba(0,0,0,.15)",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div style={{ fontSize: 17, fontWeight: 700 }}>불러오기</div>
+              <button onClick={() => setImportOpen(false)} style={{
+                background: "none", border: "none", cursor: "pointer", color: "var(--ink3)", display: "flex", alignItems: "center",
+              }}><X size={20} /></button>
+            </div>
+            <textarea
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              placeholder="JSON 문자열을 붙여넣기..."
+              style={{
+                width: "100%", height: 160, border: "1px solid var(--bd)", borderRadius: 10,
+                padding: 12, fontSize: 13, fontFamily: "inherit", resize: "vertical",
+                outline: "none", boxSizing: "border-box",
+              }}
+            />
+            <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
+              <button onClick={() => fileRef.current?.click()} style={{
+                border: "1px solid var(--bd)", background: "var(--sf)", borderRadius: 8,
+                padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "var(--ink2)",
+                cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center",
+              }}><Upload size={13} style={{ marginRight: 4 }} />파일 선택</button>
+              <input ref={fileRef} type="file" accept=".json" onChange={handleImportFile} style={{ display: "none" }} />
+              <button onClick={handleImportText} style={{
+                border: "none", background: "var(--ink)", borderRadius: 8,
+                padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "#fff",
+                cursor: "pointer", fontFamily: "inherit",
+              }}>불러오기</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
