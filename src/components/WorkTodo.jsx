@@ -109,7 +109,7 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
       borderLeft: `4px solid ${isProj ? "var(--blue)" : "var(--green)"}`,
       opacity: t.done ? 0.5 : 1, transition: "box-shadow .15s",
     }}>
-      {/* Row 1: check + title */}
+      {/* Row 1: check + title + delete */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "14px 16px 0 16px" }}>
         <div style={{ paddingTop: 1, flexShrink: 0 }}><Check checked={t.done} onClick={() => onToggle(t.id)} /></div>
         <textarea
@@ -124,6 +124,11 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
             ...(t.done ? { color: "var(--ink2)" } : {}),
           }}
         />
+        <button onClick={() => onDel(t.id)} style={{
+          flexShrink: 0, border: "1px solid var(--red-bg)", background: "var(--red-bg)", borderRadius: 8,
+          padding: "3px 8px", color: "var(--red)",
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+        }}><X size={14} /></button>
       </div>
       {/* Row 2: badges + actions */}
       <div style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap", padding: "8px 16px 14px 16px" }}>
@@ -141,11 +146,6 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
           padding: "3px 10px", fontSize: 11, fontWeight: 600, color: "var(--ink2)",
           cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center",
         }}><Calendar size={12} style={{ marginRight: 4 }} />날짜 수정</button>
-        <button onClick={() => onDel(t.id)} style={{
-          marginLeft: "auto", border: "1px solid var(--red-bg)", background: "var(--red-bg)", borderRadius: 8,
-          padding: "3px 8px", fontSize: 11, fontWeight: 700, color: "var(--red)",
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-        }}><X size={14} /></button>
       </div>
       {isProj && (
         <SubList subs={t.subs || []} taskId={t.id}
