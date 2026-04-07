@@ -77,7 +77,7 @@ function SubList({ subs, taskId, onToggle, onEdit, onDel, onAdd }) {
             style={{
               flex: 1, fontSize: 14, border: "none", background: "transparent",
               fontFamily: "inherit", color: "var(--ink)", outline: "none",
-              ...(s.done ? { textDecoration: "line-through", color: "var(--ink3)" } : {}),
+              ...(s.done ? { color: "var(--ink2)" } : {}),
             }}
           />
           <button className="sub-del-btn" onClick={() => onDel(taskId, s.sid)} style={{
@@ -121,7 +121,7 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
             flex: 1, minWidth: 0, fontSize: 16, fontWeight: 500, lineHeight: 1.5, border: "none",
             background: "transparent", resize: "none", fontFamily: "inherit", color: "var(--ink)",
             outline: "none", overflow: "hidden", wordBreak: "break-word",
-            ...(t.done ? { textDecoration: "line-through", color: "var(--ink3)" } : {}),
+            ...(t.done ? { color: "var(--ink2)" } : {}),
           }}
         />
       </div>

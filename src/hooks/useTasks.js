@@ -244,6 +244,22 @@ export function useTasks(userId) {
       } catch {
         return { error: "올바른 JSON 형식이 아닙니다." };
       }
+      // { "code": "[...]", ... } 형태 지원
+      if (raw && typeof raw === "object" && !Array.isArray(raw) && raw.code) {
+        try {
+          raw = JSON.parse(raw.code);
+        } catch {
+          return { error: "code 필드의 JSON을 파싱할 수 없습니다." };
+        }
+      }
+      // 문자열이 한 번 더 감싸진 경우
+      if (typeof raw === "string") {
+        try {
+          raw = JSON.parse(raw);
+        } catch {
+          return { error: "올바른 JSON 형식이 아닙니다." };
+        }
+      }
       if (!Array.isArray(raw)) return { error: "배열 형식이어야 합니다." };
 
       let imported = 0;
