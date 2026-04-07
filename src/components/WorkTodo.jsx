@@ -337,7 +337,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18 }}>
-          <div style={{ fontSize: isMobile ? 22 : 30, fontWeight: 800, letterSpacing: -0.5 }}>업무 할일</div>
+          <div style={{ fontSize: isMobile ? 32 : 40, fontWeight: 800, letterSpacing: -0.5 }}>업무 할일</div>
           <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 800, letterSpacing: -1 }}>
             {doneCount}
             <span style={{ color: "var(--ink3)", fontWeight: 500, fontSize: isMobile ? 16 : 20, marginLeft: 2 }}>
