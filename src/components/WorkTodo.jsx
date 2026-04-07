@@ -109,7 +109,7 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
       opacity: t.done ? 0.5 : 1, transition: "box-shadow .15s",
     }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", flexWrap: "wrap" }}>
-        <Check checked={t.done} onClick={() => onToggle(t.id)} />
+        <div style={{ paddingTop: 1 }}><Check checked={t.done} onClick={() => onToggle(t.id)} /></div>
         <textarea
           rows={1}
           value={t.text}
