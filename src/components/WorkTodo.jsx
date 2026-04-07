@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Check as CheckIcon, X, Plus, ChevronLeft, ChevronRight, Calendar, Trash2, LogOut, Download, Upload } from "lucide-react";
+import { Check as CheckIcon, X, Plus, ChevronLeft, ChevronRight, Calendar, Trash2, LogOut, Download, Upload, Menu } from "lucide-react";
 import CalendarModal from "./CalendarModal";
 
 const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -178,6 +178,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
   const [calYear, setCalYear] = useState(today().getFullYear());
   const [calMonth, setCalMonth] = useState(today().getMonth());
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const addRef = useRef();
@@ -314,24 +315,37 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
     <>
       <div style={{ maxWidth: 900, margin: "0 auto", padding: isMobile ? "28px 16px 80px" : "36px 20px 80px" }}>
 
-        {/* Top bar */}
+        {/* Hamburger menu */}
         {user && (
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 10 }}>
-            <button onClick={exportTasks} style={{
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10, position: "relative" }}>
+            <button onClick={() => setMenuOpen((v) => !v)} style={{
               background: "none", border: "1px solid var(--bd)", borderRadius: 8,
-              padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "var(--ink3)",
-              cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center",
-            }}><Download size={12} style={{ marginRight: 4 }} />내보내기</button>
-            <button onClick={() => setImportOpen(true)} style={{
-              background: "none", border: "1px solid var(--bd)", borderRadius: 8,
-              padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "var(--ink3)",
-              cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center",
-            }}><Upload size={12} style={{ marginRight: 4 }} />불러오기</button>
-            <button onClick={onSignOut} style={{
-              background: "none", border: "1px solid var(--bd)", borderRadius: 8,
-              padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "var(--ink3)",
-              cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center",
-            }}><LogOut size={12} style={{ marginRight: 4 }} />로그아웃</button>
+              padding: "6px 8px", cursor: "pointer", display: "flex", alignItems: "center",
+              color: "var(--ink2)",
+            }}><Menu size={18} /></button>
+            {menuOpen && (
+              <>
+                <div onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 998 }} />
+                <div style={{
+                  position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 999,
+                  background: "var(--sf)", border: "1px solid var(--bd)", borderRadius: 12,
+                  boxShadow: "0 4px 16px rgba(0,0,0,.1)", overflow: "hidden", minWidth: 160,
+                }}>
+                  {[
+                    { icon: <Download size={14} />, label: "내보내기", action: () => { exportTasks(); setMenuOpen(false); } },
+                    { icon: <Upload size={14} />, label: "불러오기", action: () => { setImportOpen(true); setMenuOpen(false); } },
+                    { icon: <LogOut size={14} />, label: "로그아웃", action: () => { onSignOut(); setMenuOpen(false); } },
+                  ].map((item) => (
+                    <button key={item.label} onClick={item.action} style={{
+                      display: "flex", alignItems: "center", gap: 8, width: "100%",
+                      padding: "10px 16px", border: "none", background: "none",
+                      fontSize: 13, fontWeight: 600, color: "var(--ink2)",
+                      cursor: "pointer", fontFamily: "inherit",
+                    }}>{item.icon}{item.label}</button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
 
