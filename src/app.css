@@ -1,0 +1,39 @@
+:root {
+  --bg: #F2F1ED;
+  --sf: #FFFFFF;
+  --sf2: #ECEAE4;
+  --bd: #DEDDD7;
+  --bd2: #C4C3BB;
+  --ink: #181816;
+  --ink2: #5E5E58;
+  --ink3: #A8A8A2;
+  --red: #B33030;
+  --red-bg: #FDECEA;
+  --blue: #3040B0;
+  --blue-bg: #EEF0FF;
+  --green: #256040;
+  --green-bg: #E4F4EB;
+  --amber: #7A4800;
+  --amber-bg: #FFF3DC;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+/* Card hover effects */
+.task-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+.task-card .hover-btn { opacity: 0; transition: opacity .15s; }
+.task-card:hover .hover-btn { opacity: 1 !important; }
+.sub-row:hover .sub-del-btn { opacity: 1 !important; }
+
+/* Mobile: always show action buttons */
+@media (max-width: 640px) {
+  .task-card .hover-btn { opacity: 1 !important; }
+  .sub-row .sub-del-btn { opacity: 1 !important; }
+}
