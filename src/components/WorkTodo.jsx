@@ -259,28 +259,30 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
     <>
       <div style={{ maxWidth: 900, margin: "0 auto", padding: isMobile ? "28px 14px 80px" : "36px 20px 80px" }}>
 
+        {/* Logout */}
+        {user && (
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+            <button onClick={onSignOut} style={{
+              background: "none", border: "1px solid var(--bd)", borderRadius: 8,
+              padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "var(--ink3)",
+              cursor: "pointer", fontFamily: "inherit",
+            }}>로그아웃</button>
+          </div>
+        )}
+
         {/* Header */}
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18 }}>
           <div style={{ fontSize: isMobile ? 22 : 30, fontWeight: 800, letterSpacing: -0.5 }}>업무 할일</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
-            <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 800, letterSpacing: -1 }}>
-              {doneCount}
-              <span style={{ color: "var(--ink3)", fontWeight: 500, fontSize: isMobile ? 16 : 20, marginLeft: 2 }}>
-                /{dayTasks.length}
-              </span>
-            </div>
-            {user && (
-              <button onClick={onSignOut} style={{
-                background: "none", border: "1px solid var(--bd)", borderRadius: 8,
-                padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "var(--ink3)",
-                cursor: "pointer", fontFamily: "inherit",
-              }}>로그아웃</button>
-            )}
+          <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 800, letterSpacing: -1 }}>
+            {doneCount}
+            <span style={{ color: "var(--ink3)", fontWeight: 500, fontSize: isMobile ? 16 : 20, marginLeft: 2 }}>
+              /{dayTasks.length}
+            </span>
           </div>
         </div>
 
         {/* Date nav */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14 }}>
           <button onClick={() => setCurDate((d) => new Date(d.getTime() - 864e5))} style={dateNavBtnS}>‹</button>
           <div>
             <span style={{ fontSize: 17, fontWeight: 600, margin: "0 4px" }}>{fmtDate(curDate)}</span>
