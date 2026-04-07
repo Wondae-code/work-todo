@@ -382,13 +382,13 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
 
         {/* Add box */}
         <div style={{
-          background: "var(--sf)", border: "1px solid var(--bd)", borderRadius: 20,
+          background: "var(--sf)", border: "1px solid var(--bd)", borderRadius: 14,
           padding: isMobile ? 12 : "14px 16px", marginBottom: 22,
           display: "flex", flexDirection: "column", gap: 10,
         }}>
           {/* Row 1: type, priority, date */}
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", border: "1px solid var(--bd)", borderRadius: 20, overflow: "hidden", flexShrink: 0 }}>
+            <div style={{ display: "flex", border: "1px solid var(--bd)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
               {["quick", "project"].map((tp) => (
                 <button key={tp} onClick={() => setAddType(tp)} style={{
                   padding: "6px 12px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer",
@@ -397,7 +397,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
                 }}>{tp === "quick" ? "빠른" : "프로젝트"}</button>
               ))}
             </div>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)" }}>우선순위</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)", marginLeft: "auto" }}>우선순위</span>
             <select value={addPri} onChange={(e) => setAddPri(+e.target.value)} style={{
               border: "1px solid var(--bd)", borderRadius: 8, padding: "6px 8px", fontSize: 13,
               fontFamily: "inherit", background: "var(--sf)", cursor: "pointer", outline: "none",
@@ -407,7 +407,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
               <option value={3}>낮음</option>
             </select>
             <button onClick={openAddCal} style={{
-              marginLeft: "auto", border: "1px solid var(--bd)", borderRadius: 8,
+              border: "1px solid var(--bd)", borderRadius: 8,
               padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer",
               background: "var(--sf)", color: "var(--ink2)", fontFamily: "inherit", whiteSpace: "nowrap",
               display: "flex", alignItems: "center",
