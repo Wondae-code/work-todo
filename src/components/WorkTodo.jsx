@@ -117,6 +117,7 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
           value={t.text}
           onChange={(e) => onUpdate(t.id, { text: e.target.value })}
           onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+          ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
           style={{
             flex: 1, minWidth: 0, fontSize: 16, fontWeight: 500, lineHeight: 1.5, border: "none",
             background: "transparent", resize: "none", fontFamily: "inherit", color: "var(--ink)",
