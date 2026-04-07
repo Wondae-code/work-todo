@@ -391,15 +391,20 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
           padding: isMobile ? 12 : "14px 16px", marginBottom: 22,
           display: "flex", flexDirection: "column", gap: 10,
         }}>
-          {/* Mobile Row 0: date + type */}
+          {/* Mobile Row 0: date (right aligned) */}
           {isMobile && (
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button onClick={openAddCal} style={{
                 border: "1px solid var(--bd)", borderRadius: 8,
                 padding: "6px 12px", cursor: "pointer",
                 background: "var(--sf)", color: "var(--ink2)",
                 display: "flex", alignItems: "center",
               }}><Calendar size={13} /></button>
+            </div>
+          )}
+          {/* Mobile Row 1: type + priority */}
+          {isMobile && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <div style={{ display: "flex", border: "1px solid var(--bd)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
                 {["quick", "project"].map((tp) => (
                   <button key={tp} onClick={() => setAddType(tp)} style={{
@@ -409,14 +414,9 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
                   }}>{tp === "quick" ? "빠른" : "프로젝트"}</button>
                 ))}
               </div>
-            </div>
-          )}
-          {/* Mobile Row 1: priority */}
-          {isMobile && (
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)" }}>우선순위</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)", marginLeft: "auto" }}>우선순위</span>
               <select value={addPri} onChange={(e) => setAddPri(+e.target.value)} style={{
-                marginLeft: "auto", border: "1px solid var(--bd)", borderRadius: 8, padding: "6px 8px", fontSize: 13,
+                border: "1px solid var(--bd)", borderRadius: 8, padding: "6px 8px", fontSize: 13,
                 fontFamily: "inherit", background: "var(--sf)", cursor: "pointer", outline: "none",
               }}>
                 <option value={1}>높음</option>
