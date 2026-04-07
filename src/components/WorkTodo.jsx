@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Check as CheckIcon, X, Plus, ChevronLeft, ChevronRight, Calendar, Trash2, LogOut } from "lucide-react";
 import CalendarModal from "./CalendarModal";
 
 const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -20,7 +21,7 @@ function Check({ checked, size = 22, onClick }) {
       cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
       flexShrink: 0, transition: "all .15s",
     }}>
-      {checked && <span style={{ color: "#fff", fontSize: size * 0.59, fontWeight: 700, lineHeight: 1 }}>✓</span>}
+      {checked && <CheckIcon size={size * 0.55} color="#fff" strokeWidth={3} />}
     </div>
   );
 }
@@ -66,7 +67,7 @@ function SubList({ subs, taskId, onToggle, onEdit, onDel, onAdd }) {
     if (ref.current?.value.trim()) { onAdd(taskId, ref.current.value.trim()); ref.current.value = ""; }
   };
   return (
-    <div style={{ padding: "0 16px 12px 50px" }}>
+    <div style={{ padding: "0 16px 12px 16px" }}>
       {subs.map((s) => (
         <div key={s.sid} className="sub-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0" }}>
           <Check checked={s.done} size={17} onClick={() => onToggle(taskId, s.sid)} />
@@ -81,13 +82,13 @@ function SubList({ subs, taskId, onToggle, onEdit, onDel, onAdd }) {
           />
           <button className="sub-del-btn" onClick={() => onDel(taskId, s.sid)} style={{
             background: "none", border: "none", color: "var(--ink3)", cursor: "pointer",
-            fontSize: 16, padding: "0 4px", opacity: 0, transition: "opacity .15s",
-          }}>×</button>
+            padding: "0 4px", opacity: 0, transition: "opacity .15s", display: "flex", alignItems: "center",
+          }}><X size={14} /></button>
         </div>
       ))}
       <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
         <input ref={ref} placeholder="단계 추가..." onKeyDown={(e) => e.key === "Enter" && doAdd()} style={subInputS} />
-        <button onClick={doAdd} style={subBtnS}>+ 추가</button>
+        <button onClick={doAdd} style={{ ...subBtnS, display: "flex", alignItems: "center", justifyContent: "center" }}><Plus size={14} /></button>
       </div>
     </div>
   );
@@ -108,8 +109,9 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
       borderLeft: `4px solid ${isProj ? "var(--blue)" : "var(--green)"}`,
       opacity: t.done ? 0.5 : 1, transition: "box-shadow .15s",
     }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", flexWrap: "wrap" }}>
-        <div style={{ paddingTop: 1 }}><Check checked={t.done} onClick={() => onToggle(t.id)} /></div>
+      {/* Row 1: check + title */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "14px 16px 0 16px" }}>
+        <div style={{ paddingTop: 1, flexShrink: 0 }}><Check checked={t.done} onClick={() => onToggle(t.id)} /></div>
         <textarea
           rows={1}
           value={t.text}
@@ -122,23 +124,28 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
             ...(t.done ? { textDecoration: "line-through", color: "var(--ink3)" } : {}),
           }}
         />
-        <div style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0, flexWrap: "wrap", ...(isMobile ? { order: 3, width: "100%", paddingLeft: 34 } : {}) }}>
-          <Badge
-            label={`우선순위 ${t.priority}`}
-            variant={priV}
-            onClick={() => onUpdate(t.id, { priority: (t.priority % 3) + 1 })}
-          />
-          <Badge label={isProj ? "프로젝트" : "빠른 업무"} variant={isProj ? "proj" : "quick"} />
-          {isProj && subsTotal > 0 && (
-            <Badge label={`${subsDone}/${subsTotal} 완료`} variant={allSubDone ? "progDone" : "prog"} />
-          )}
-          <button className="hover-btn" onClick={() => onOpenCal(t.id)} style={{ ...hoverBtnS, ...(isMobile ? { opacity: 1 } : {}) }}>날짜 수정</button>
-          <button className="hover-btn" onClick={() => onDel(t.id)} style={{ ...hoverBtnS, ...(isMobile ? { opacity: 1 } : {}) }}>×</button>
-        </div>
-        {!isMobile && <>
-          <button className="hover-btn" onClick={() => onOpenCal(t.id)} style={hoverBtnS}>날짜 수정</button>
-          <button className="hover-btn" onClick={() => onDel(t.id)} style={hoverBtnS}>×</button>
-        </>}
+      </div>
+      {/* Row 2: badges + actions */}
+      <div style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap", padding: "8px 16px 14px 16px" }}>
+        <Badge
+          label={t.priority === 1 ? "높음" : t.priority === 2 ? "중간" : "낮음"}
+          variant={priV}
+          onClick={() => onUpdate(t.id, { priority: (t.priority % 3) + 1 })}
+        />
+        <Badge label={isProj ? "프로젝트" : "빠른 업무"} variant={isProj ? "proj" : "quick"} />
+        {isProj && subsTotal > 0 && (
+          <Badge label={`${subsDone}/${subsTotal} 완료`} variant={allSubDone ? "progDone" : "prog"} />
+        )}
+        <button onClick={() => onOpenCal(t.id)} style={{
+          border: "1px solid var(--bd)", background: "var(--sf)", borderRadius: 8,
+          padding: "3px 10px", fontSize: 11, fontWeight: 600, color: "var(--ink2)",
+          cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center",
+        }}><Calendar size={12} style={{ marginRight: 4 }} />날짜 수정</button>
+        <button onClick={() => onDel(t.id)} style={{
+          marginLeft: "auto", border: "1px solid var(--red-bg)", background: "var(--red-bg)", borderRadius: 8,
+          padding: "3px 8px", fontSize: 11, fontWeight: 700, color: "var(--red)",
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+        }}><X size={14} /></button>
       </div>
       {isProj && (
         <SubList subs={t.subs || []} taskId={t.id}
@@ -274,7 +281,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
 
   return (
     <>
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: isMobile ? "28px 24px 80px" : "36px 20px 80px" }}>
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: isMobile ? "28px 16px 80px" : "36px 20px 80px" }}>
 
         {/* Logout */}
         {user && (
@@ -282,8 +289,8 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
             <button onClick={onSignOut} style={{
               background: "none", border: "1px solid var(--bd)", borderRadius: 8,
               padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "var(--ink3)",
-              cursor: "pointer", fontFamily: "inherit",
-            }}>로그아웃</button>
+              cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center",
+            }}><LogOut size={12} style={{ marginRight: 4 }} />로그아웃</button>
           </div>
         )}
 
@@ -300,7 +307,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
 
         {/* Date nav */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14 }}>
-          <button onClick={() => setCurDate((d) => new Date(d.getTime() - 864e5))} style={dateNavBtnS}>‹</button>
+          <button onClick={() => setCurDate((d) => new Date(d.getTime() - 864e5))} style={dateNavBtnS}><ChevronLeft size={18} /></button>
           <div>
             <span style={{ fontSize: 17, fontWeight: 600, margin: "0 4px" }}>{fmtDate(curDate)}</span>
             <span style={{
@@ -312,7 +319,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
           {diff !== 0 && (
             <button onClick={() => setCurDate(today())} style={{ ...dateNavBtnS, width: "auto", padding: "0 14px", fontSize: 13, fontWeight: 600 }}>오늘</button>
           )}
-          <button onClick={() => setCurDate((d) => new Date(d.getTime() + 864e5))} style={dateNavBtnS}>›</button>
+          <button onClick={() => setCurDate((d) => new Date(d.getTime() + 864e5))} style={dateNavBtnS}><ChevronRight size={18} /></button>
         </div>
 
         {/* Progress */}
@@ -335,21 +342,17 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
               border: `1px solid ${filter === f ? "var(--ink)" : "var(--bd)"}`,
             }}>{l}</div>
           ))}
-          <div onClick={() => setSortAsc((s) => !s)} style={{
-            marginLeft: "auto", padding: "6px 16px", borderRadius: 20, fontSize: 13, fontWeight: 600,
-            cursor: "pointer", background: "var(--sf)", color: "var(--ink2)", border: "1px solid var(--bd)", whiteSpace: "nowrap",
-          }}>{sortAsc ? "우선순위 ↑" : "우선순위 ↓"}</div>
         </div>
 
         {/* Add box */}
         <div style={{
-          background: "var(--sf)", border: "1px solid var(--bd)", borderRadius: 14,
+          background: "var(--sf)", border: "1px solid var(--bd)", borderRadius: 20,
           padding: isMobile ? 12 : "14px 16px", marginBottom: 22,
           display: "flex", flexDirection: "column", gap: 10,
         }}>
           {/* Row 1: type, priority, date */}
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", border: "1px solid var(--bd)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
+            <div style={{ display: "flex", border: "1px solid var(--bd)", borderRadius: 20, overflow: "hidden", flexShrink: 0 }}>
               {["quick", "project"].map((tp) => (
                 <button key={tp} onClick={() => setAddType(tp)} style={{
                   padding: "6px 12px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer",
@@ -358,31 +361,33 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
                 }}>{tp === "quick" ? "빠른" : "프로젝트"}</button>
               ))}
             </div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)" }}>우선순위</span>
             <select value={addPri} onChange={(e) => setAddPri(+e.target.value)} style={{
               border: "1px solid var(--bd)", borderRadius: 8, padding: "6px 8px", fontSize: 13,
               fontFamily: "inherit", background: "var(--sf)", cursor: "pointer", outline: "none",
             }}>
-              <option value={1}>우선순위 1</option>
-              <option value={2}>우선순위 2</option>
-              <option value={3}>우선순위 3</option>
+              <option value={1}>높음</option>
+              <option value={2}>중간</option>
+              <option value={3}>낮음</option>
             </select>
             <button onClick={openAddCal} style={{
               marginLeft: "auto", border: "1px solid var(--bd)", borderRadius: 8,
               padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer",
               background: "var(--sf)", color: "var(--ink2)", fontFamily: "inherit", whiteSpace: "nowrap",
-            }}>{(() => { const d = parseKey(addDate); const diff = diffDays(d, today()); return diff === 0 ? "오늘" : diff === 1 ? "내일" : `${d.getMonth() + 1}/${d.getDate()}`; })()}</button>
+              display: "flex", alignItems: "center",
+            }}><Calendar size={13} style={{ marginRight: 5 }} />{(() => { const d = parseKey(addDate); return `${String(d.getFullYear()).slice(2)}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`; })()}</button>
           </div>
           {/* Row 2: input, add button */}
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <input ref={addRef} placeholder="할 일 입력..." onKeyDown={(e) => e.key === "Enter" && handleAdd()} style={{
-              flex: 1, border: "1px solid var(--bd)", borderRadius: 8,
+              flex: 1, border: "1px solid var(--bd)", borderRadius: 20,
               padding: "8px 12px", fontSize: 15, fontFamily: "inherit", outline: "none",
             }} />
             <button onClick={handleAdd} style={{
               background: "var(--ink)", color: "#fff", border: "none", borderRadius: 10,
-              width: 36, height: 36, fontSize: 20, fontWeight: 600, cursor: "pointer",
+              width: 36, height: 36, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-            }}>+</button>
+            }}><Plus size={20} /></button>
           </div>
         </div>
 
@@ -391,7 +396,12 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
 
         {filter !== "quick" && projActive.length > 0 && (
           <>
-            <SectionHeader color="var(--blue)" label="프로젝트 업무" />
+            <SectionHeader color="var(--blue)" label="프로젝트 업무" right={
+              <div onClick={() => setSortAsc((s) => !s)} style={{
+                padding: "3px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                cursor: "pointer", background: "var(--sf)", color: "var(--ink2)", border: "1px solid var(--bd)", whiteSpace: "nowrap",
+              }}>{sortAsc ? "우선순위 ↑" : "우선순위 ↓"}</div>
+            } />
             {projActive.map((t) => <Card key={t.id} task={t} {...cardProps} />)}
           </>
         )}
@@ -410,10 +420,10 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
             </div>
             {done.map((t) => <Card key={t.id} task={t} {...cardProps} />)}
             <button onClick={() => clearDone(key)} style={{
-              display: "block", margin: "16px auto 0", background: "none", border: "1px solid var(--bd)",
-              borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 600, color: "var(--ink3)",
-              cursor: "pointer", fontFamily: "inherit",
-            }}>완료 항목 삭제</button>
+              display: "flex", alignItems: "center", justifyContent: "center", margin: "16px auto 0",
+              background: "none", border: "1px solid var(--bd)", borderRadius: 8, padding: "8px 20px",
+              fontSize: 13, fontWeight: 600, color: "var(--ink3)", cursor: "pointer", fontFamily: "inherit",
+            }}><Trash2 size={13} style={{ marginRight: 4 }} />완료 항목 삭제</button>
           </>
         )}
 
@@ -432,10 +442,11 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
   );
 }
 
-function SectionHeader({ color, label }) {
+function SectionHeader({ color, label, right }) {
   return (
     <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink3)", letterSpacing: 0.5, margin: "18px 0 10px", display: "flex", alignItems: "center", gap: 6 }}>
       <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, display: "inline-block" }} />{label}
+      {right && <div style={{ marginLeft: "auto" }}>{right}</div>}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const dk = (d) =>
@@ -54,14 +55,14 @@ export default function CalendarModal({
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div style={{ fontSize: 17, fontWeight: 700 }}>날짜 선택</div>
-          <button onClick={onClose} style={closeBtn}>×</button>
+          <button onClick={onClose} style={closeBtn}><X size={20} /></button>
         </div>
 
         {/* Month nav */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <button onClick={prev} style={navBtn}>‹</button>
+          <button onClick={prev} style={navBtn}><ChevronLeft size={16} /></button>
           <div style={{ fontSize: 15, fontWeight: 700 }}>{calYear}년 {calMonth + 1}월</div>
-          <button onClick={next} style={navBtn}>›</button>
+          <button onClick={next} style={navBtn}><ChevronRight size={16} /></button>
         </div>
 
         {/* Calendar grid */}
@@ -110,8 +111,8 @@ const modal = {
   maxWidth: "90vw", boxShadow: "0 12px 40px rgba(0,0,0,.15)",
 };
 const closeBtn = {
-  background: "none", border: "none", fontSize: 22, cursor: "pointer",
-  color: "var(--ink3)", padding: "0 4px",
+  background: "none", border: "none", cursor: "pointer",
+  color: "var(--ink3)", padding: "0 4px", display: "flex", alignItems: "center",
 };
 const navBtn = {
   background: "var(--sf2)", border: "1px solid var(--bd)", borderRadius: 8,
