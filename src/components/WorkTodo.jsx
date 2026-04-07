@@ -391,7 +391,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
           padding: isMobile ? 12 : "14px 16px", marginBottom: 22,
           display: "flex", flexDirection: "column", gap: 10,
         }}>
-          {/* Row 1: type, priority, date */}
+          {/* Row 1: type, date */}
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ display: "flex", border: "1px solid var(--bd)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
               {["quick", "project"].map((tp) => (
@@ -402,26 +402,40 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
                 }}>{tp === "quick" ? "빠른" : "프로젝트"}</button>
               ))}
             </div>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)", marginLeft: "auto" }}>우선순위</span>
-            <select value={addPri} onChange={(e) => setAddPri(+e.target.value)} style={{
+            {!isMobile && <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)", marginLeft: "auto" }}>우선순위</span>}
+            {!isMobile && <select value={addPri} onChange={(e) => setAddPri(+e.target.value)} style={{
               border: "1px solid var(--bd)", borderRadius: 8, padding: "6px 8px", fontSize: 13,
               fontFamily: "inherit", background: "var(--sf)", cursor: "pointer", outline: "none",
             }}>
               <option value={1}>높음</option>
               <option value={2}>중간</option>
               <option value={3}>낮음</option>
-            </select>
+            </select>}
             <button onClick={openAddCal} style={{
-              border: "1px solid var(--bd)", borderRadius: 8,
+              marginLeft: isMobile ? "auto" : 0, border: "1px solid var(--bd)", borderRadius: 8,
               padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer",
-              background: "var(--sf)", color: "var(--ink2)", fontFamily: "inherit", whiteSpace: "nowrap",
+              background: "var(--sf)", color: "var(--ink2)", fontFamily: "inherit",
               display: "flex", alignItems: "center",
-            }}><Calendar size={13} style={{ marginRight: 5 }} />{(() => { const d = parseKey(addDate); return `${String(d.getFullYear()).slice(2)}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`; })()}</button>
+            }}><Calendar size={13} /></button>
           </div>
+          {/* Row 1.5 (mobile): priority */}
+          {isMobile && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)" }}>우선순위</span>
+              <select value={addPri} onChange={(e) => setAddPri(+e.target.value)} style={{
+                border: "1px solid var(--bd)", borderRadius: 8, padding: "6px 8px", fontSize: 13,
+                fontFamily: "inherit", background: "var(--sf)", cursor: "pointer", outline: "none",
+              }}>
+                <option value={1}>높음</option>
+                <option value={2}>중간</option>
+                <option value={3}>낮음</option>
+              </select>
+            </div>
+          )}
           {/* Row 2: input, add button */}
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <input ref={addRef} placeholder="할 일 입력..." onKeyDown={(e) => e.key === "Enter" && handleAdd()} style={{
-              flex: 1, border: "1px solid var(--bd)", borderRadius: 20,
+              flex: 1, border: "1px solid var(--bd)", borderRadius: 8,
               padding: "8px 12px", fontSize: 15, fontFamily: "inherit", outline: "none",
             }} />
             <button onClick={handleAdd} style={{
