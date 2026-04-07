@@ -71,12 +71,16 @@ function SubList({ subs, taskId, onToggle, onEdit, onDel, onAdd }) {
       {subs.map((s) => (
         <div key={s.sid} className="sub-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0" }}>
           <Check checked={s.done} size={17} onClick={() => onToggle(taskId, s.sid)} />
-          <input
+          <textarea
+            rows={1}
             value={s.text}
             onChange={(e) => onEdit(taskId, s.sid, { text: e.target.value })}
+            onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+            ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
             style={{
-              flex: 1, fontSize: 14, border: "none", background: "transparent",
+              flex: 1, minWidth: 0, fontSize: 14, border: "none", background: "transparent",
               fontFamily: "inherit", color: "var(--ink)", outline: "none",
+              resize: "none", overflow: "hidden", wordBreak: "break-word", lineHeight: 1.5,
               ...(s.done ? { color: "var(--ink2)" } : {}),
             }}
           />
