@@ -61,29 +61,45 @@ function Toast({ msg, visible }) {
 
 /* ── SubList ── */
 
-function SubList({ subs, taskId, onToggle, onEdit, onDel, onAdd }) {
+function SubList({ subs, taskId, onToggle, onEdit, onDel, onAdd, onOpenSubCal }) {
   const ref = useRef();
   const doAdd = () => {
     if (ref.current?.value.trim()) { onAdd(taskId, ref.current.value.trim()); ref.current.value = ""; }
   };
+  const fmtDoneAt = (d) => {
+    if (!d) return "";
+    const p = d.split("-");
+    return `${p[1]}/${p[2]}`;
+  };
   return (
     <div style={{ padding: "0 16px 12px 16px" }}>
       {subs.map((s) => (
-        <div key={s.sid} className="sub-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0" }}>
-          <Check checked={s.done} size={17} onClick={() => onToggle(taskId, s.sid)} />
-          <textarea
-            rows={1}
-            value={s.text}
-            onChange={(e) => onEdit(taskId, s.sid, { text: e.target.value })}
-            onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
-            ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
-            style={{
-              flex: 1, minWidth: 0, fontSize: 14, border: "none", background: "transparent",
-              fontFamily: "inherit", color: "var(--ink)", outline: "none",
-              resize: "none", overflow: "hidden", wordBreak: "break-word", lineHeight: 1.5,
-              ...(s.done ? { color: "var(--ink2)" } : {}),
-            }}
-          />
+        <div key={s.sid} className="sub-row" style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "5px 0" }}>
+          <div style={{ paddingTop: 2, flexShrink: 0 }}>
+            <Check checked={s.done} size={17} onClick={() => onToggle(taskId, s.sid)} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <textarea
+              rows={1}
+              value={s.text}
+              onChange={(e) => onEdit(taskId, s.sid, { text: e.target.value })}
+              onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+              ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
+              style={{
+                width: "100%", fontSize: 14, border: "none", background: "transparent",
+                fontFamily: "inherit", color: "var(--ink)", outline: "none",
+                resize: "none", overflow: "hidden", wordBreak: "break-word", lineHeight: 1.5,
+                ...(s.done ? { color: "var(--ink2)" } : {}),
+              }}
+            />
+            {s.done && s.done_at && (
+              <button onClick={() => onOpenSubCal(taskId, s.sid, s.done_at)} style={{
+                background: "none", border: "none", cursor: "pointer", padding: 0,
+                fontSize: 11, color: "var(--ink3)", fontFamily: "inherit",
+                display: "flex", alignItems: "center", gap: 3, marginTop: 2,
+              }}><Calendar size={10} />{fmtDoneAt(s.done_at)} 완료</button>
+            )}
+          </div>
           <button className="sub-del-btn" onClick={() => onDel(taskId, s.sid)} style={{
             background: "none", border: "none", color: "var(--ink3)", cursor: "pointer",
             padding: "0 4px", opacity: 0, transition: "opacity .15s", display: "flex", alignItems: "center",
@@ -100,7 +116,7 @@ function SubList({ subs, taskId, onToggle, onEdit, onDel, onAdd }) {
 
 /* ── Card ── */
 
-function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggleSub, onEditSub, onDelSub, onAddSub }) {
+function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggleSub, onEditSub, onDelSub, onAddSub, onOpenSubCal }) {
   const isProj = t.type === "project";
   const priV = t.priority === 1 ? "p1" : t.priority === 2 ? "p2" : "p3";
   const subsDone = (t.subs || []).filter((s) => s.done).length;
@@ -154,7 +170,7 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
       </div>
       {isProj && (
         <SubList subs={t.subs || []} taskId={t.id}
-          onToggle={onToggleSub} onEdit={onEditSub} onDel={onDelSub} onAdd={onAddSub} />
+          onToggle={onToggleSub} onEdit={onEditSub} onDel={onDelSub} onAdd={onAddSub} onOpenSubCal={onOpenSubCal} />
       )}
     </div>
   );
@@ -173,8 +189,9 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
   const [addDate, setAddDate] = useState(dk(today()));
   const [toast, setToast] = useState({ msg: "", visible: false });
   const [calOpen, setCalOpen] = useState(false);
-  const [calMode, setCalMode] = useState("edit"); // "edit" | "add"
+  const [calMode, setCalMode] = useState("edit"); // "edit" | "add" | "sub"
   const [calTaskId, setCalTaskId] = useState(null);
+  const [calSubId, setCalSubId] = useState(null);
   const [calYear, setCalYear] = useState(today().getFullYear());
   const [calMonth, setCalMonth] = useState(today().getMonth());
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
@@ -256,7 +273,10 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
 
   const handleToggleSub = (tid, sid) => {
     const s = tasks.find((t) => t.id === tid)?.subs?.find((x) => x.sid === sid);
-    if (s) updateSub(tid, sid, { done: !s.done });
+    if (s) {
+      const newDone = !s.done;
+      updateSub(tid, sid, { done: newDone, done_at: newDone ? dk(today()) : null });
+    }
   };
 
   const openCal = (id) => {
@@ -279,9 +299,24 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
     setCalOpen(true);
   };
 
+  const openSubCal = (tid, sid, doneAt) => {
+    const d = doneAt ? parseKey(doneAt) : today();
+    setCalMode("sub");
+    setCalTaskId(tid);
+    setCalSubId(sid);
+    setCalYear(d.getFullYear());
+    setCalMonth(d.getMonth());
+    setCalOpen(true);
+  };
+
   const pickDate = (k) => {
     if (calMode === "add") {
       setAddDate(k);
+      setCalOpen(false);
+      return;
+    }
+    if (calMode === "sub") {
+      updateSub(calTaskId, calSubId, { done_at: k });
       setCalOpen(false);
       return;
     }
@@ -295,12 +330,14 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
     else flash(`${Math.abs(d)}일 전으로 이동했어요`);
   };
 
-  const selectedKey = calMode === "add" ? addDate : (calTaskId != null ? tasks.find((x) => x.id === calTaskId)?.date_key : "");
+  const selectedKey = calMode === "add" ? addDate
+    : calMode === "sub" ? (tasks.find((x) => x.id === calTaskId)?.subs?.find((s) => s.sid === calSubId)?.done_at || "")
+    : (calTaskId != null ? tasks.find((x) => x.id === calTaskId)?.date_key : "");
 
   const cardProps = {
     isMobile, onToggle: handleToggle, onUpdate: updateTask, onDel: deleteTask,
     onOpenCal: openCal, onToggleSub: handleToggleSub, onEditSub: updateSub,
-    onDelSub: deleteSub, onAddSub: addSub,
+    onDelSub: deleteSub, onAddSub: addSub, onOpenSubCal: openSubCal,
   };
 
   if (loading) {

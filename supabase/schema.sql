@@ -21,6 +21,7 @@ create table public.subtasks (
   task_id     bigint references public.tasks(id) on delete cascade not null,
   text        text not null,
   done        boolean default false,
+  done_at     text,                                     -- 'YYYY-MM-DD' 완료 날짜
   sort_order  smallint default 0,
   created_at  timestamptz default now()
 );

@@ -36,7 +36,7 @@ function rowToTask(row, subtasks = []) {
     subs: subtasks
       .filter((s) => s.task_id === row.id)
       .sort((a, b) => a.sort_order - b.sort_order)
-      .map((s) => ({ sid: s.id, text: s.text, done: s.done })),
+      .map((s) => ({ sid: s.id, text: s.text, done: s.done, done_at: s.done_at || null })),
   };
 }
 
@@ -159,7 +159,7 @@ export function useTasks(userId) {
         setTasks((prev) =>
           prev.map((t) =>
             t.id === taskId
-              ? { ...t, subs: [...t.subs, { sid: Date.now(), text, done: false }] }
+              ? { ...t, subs: [...t.subs, { sid: Date.now(), text, done: false, done_at: null }] }
               : t
           )
         );
@@ -177,7 +177,7 @@ export function useTasks(userId) {
         setTasks((prev) =>
           prev.map((t) =>
             t.id === taskId
-              ? { ...t, subs: [...t.subs, { sid: data.id, text: data.text, done: data.done }] }
+              ? { ...t, subs: [...t.subs, { sid: data.id, text: data.text, done: data.done, done_at: data.done_at || null }] }
               : t
           )
         );
@@ -225,7 +225,7 @@ export function useTasks(userId) {
       priority: t.priority,
       type: t.type,
       date_key: t.date_key,
-      subs: (t.subs || []).map((s) => ({ text: s.text, done: s.done })),
+      subs: (t.subs || []).map((s) => ({ text: s.text, done: s.done, done_at: s.done_at || null })),
     }));
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -279,7 +279,7 @@ export function useTasks(userId) {
             ...prev,
             {
               id: taskId, text, done, priority, type, date_key,
-              subs: subs.map((s, i) => ({ sid: taskId * 100 + i, text: s.text, done: !!s.done })),
+              subs: subs.map((s, i) => ({ sid: taskId * 100 + i, text: s.text, done: !!s.done, done_at: s.done_at || null })),
             },
           ]);
           imported++;
@@ -299,6 +299,7 @@ export function useTasks(userId) {
             task_id: data.id,
             text: s.text,
             done: !!s.done,
+            done_at: s.done_at || null,
             sort_order: i,
           }));
           await supabase.from("subtasks").insert(subRows);
