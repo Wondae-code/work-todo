@@ -1,7 +1,7 @@
 import { useAuth } from "./hooks/useAuth";
 import { useTasks } from "./hooks/useTasks";
 import Auth from "./components/Auth";
-import WorkTodo from "./components/WorkTodo";
+import AppShell from "./components/AppShell";
 import "./app.css";
 
 export default function App() {
@@ -31,14 +31,14 @@ export default function App() {
     );
   }
 
-  // 로그인 → 메인 앱
+  // 로그인 → 메인 앱 (탭 네비 + 패널)
   return (
-    <WorkTodo
+    <AppShell
       user={user}
       onSignOut={signOut}
       tasks={tasks}
       taskActions={taskActions}
-      loading={tasksLoading}
+      tasksLoading={tasksLoading}
     />
   );
 }

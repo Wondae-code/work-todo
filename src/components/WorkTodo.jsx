@@ -388,7 +388,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18 }}>
-          <div style={{ fontSize: isMobile ? 32 : 40, fontWeight: 800, letterSpacing: -0.5 }}>업무 할일</div>
+          <div style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, letterSpacing: -0.5 }}>업무 할일</div>
           <div style={{ fontSize: isMobile ? 26 : 36, fontWeight: 800, letterSpacing: -1 }}>
             {doneCount}
             <span style={{ color: "var(--ink3)", fontWeight: 500, fontSize: isMobile ? 16 : 20, marginLeft: 2 }}>
@@ -426,7 +426,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
 
         {/* Filters */}
         <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap", alignItems: "center" }}>
-          {[["all", "전체 보기"], ["project", "프로젝트"], ["quick", "빠른 업무"]].map(([f, l]) => (
+          {[["all", "전체 보기"], ["project", "업무"], ["quick", "빠른 업무"]].map(([f, l]) => (
             <div key={f} onClick={() => setFilter(f)} style={{
               padding: "6px 16px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
               background: filter === f ? "var(--ink)" : "var(--sf)",
@@ -488,7 +488,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
 
         {filter !== "quick" && projActive.length > 0 && (
           <>
-            <SectionHeader color="var(--blue)" label="프로젝트 업무" right={
+            <SectionHeader color="var(--blue)" label="업무" right={
               <div onClick={() => setSortAsc((s) => !s)} style={{
                 padding: "3px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,
                 cursor: "pointer", background: "var(--sf)", color: "var(--ink2)", border: "1px solid var(--bd)", whiteSpace: "nowrap",
