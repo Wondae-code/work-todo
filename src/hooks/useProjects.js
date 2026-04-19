@@ -216,6 +216,30 @@ export function useProjects(userId) {
     [userId]
   );
 
+  const reorderSubs = useCallback(
+    async (projectId, newOrderSids) => {
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id !== projectId) return p;
+          const bySid = new Map(p.subs.map((s) => [s.sid, s]));
+          return {
+            ...p,
+            subs: newOrderSids
+              .map((sid) => bySid.get(sid))
+              .filter(Boolean),
+          };
+        })
+      );
+      if (!userId) return;
+      await Promise.all(
+        newOrderSids.map((sid, i) =>
+          supabase.from("project_subs").update({ sort_order: i }).eq("id", sid)
+        )
+      );
+    },
+    [userId]
+  );
+
   return {
     projects,
     loading,
@@ -226,6 +250,7 @@ export function useProjects(userId) {
     addSub,
     updateSub,
     deleteSub,
+    reorderSubs,
     refetch: fetchAll,
   };
 }

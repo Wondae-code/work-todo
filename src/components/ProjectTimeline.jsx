@@ -1,19 +1,21 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Plus, Trash2, Check as CheckIcon, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Plus, Trash2, Check as CheckIcon, X, ChevronDown, GripVertical } from "lucide-react";
 import AddProjectModal from "./AddProjectModal";
 
-/* ── Pastel palette
-   Tones tuned from the reference swatch the user supplied. `main` drives
-   the timeline line/dot color + card accent; `light` / `text` are soft
-   variants for surfaces and readable labels. */
+/* ── Palette — 9 swatches from Figma "참고" (Color Input reference column).
+   `main` drives line/dot/accent; `text` is a darker readable variant for
+   the "중간 팝업" text-on-white popup style. */
 const PAL = {
-  coral:     { main: "#FFA1A1", light: "#FFE4E4", text: "#B04040", label: "코랄" },
-  sky:       { main: "#64D9F3", light: "#C6F0F8", text: "#0A7A94", label: "스카이" },
-  lilac:     { main: "#D8A0EE", light: "#EFDFF6", text: "#8A4FB0", label: "라일락" },
-  mint:      { main: "#C0E1D2", light: "#E4F3EB", text: "#3A7858", label: "민트" },
-  taupe:     { main: "#A98B76", light: "#E5DBD1", text: "#6B503D", label: "토프" },
-  lavender:  { main: "#9B8EC7", light: "#DDD7ED", text: "#5A4E88", label: "라벤더" },
-  peach:     { main: "#F2A65A", light: "#FBE2CD", text: "#A55A18", label: "피치" },
+  red:       { main: "#B33030", text: "#8C1F1F", label: "레드" },
+  coral:     { main: "#FFA1A1", text: "#B04040", label: "코랄" },
+  peach:     { main: "#F2A65A", text: "#A55A18", label: "피치" },
+  green:     { main: "#85C38E", text: "#3D7A4A", label: "그린" },
+  sky:       { main: "#64D9F3", text: "#57B7CD", label: "스카이" },
+  magenta:   { main: "#D8A0EE", text: "#8E4BA6", label: "마젠타" },
+  purple:    { main: "#9B8EC7", text: "#5E549A", label: "퍼플" },
+  lavender:  { main: "#B19CE4", text: "#6B57A0", label: "라벤더" },
+  slate:     { main: "#5E5E58", text: "#3A3A35", label: "슬레이트" },
 };
 const PAL_KEYS = Object.keys(PAL);
 const randomPalKey = () => PAL_KEYS[Math.floor(Math.random() * PAL_KEYS.length)];
@@ -29,6 +31,7 @@ const pk = (k) => { const [y, m, d] = k.split("-"); return new Date(+y, +m - 1, 
 const addD = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
 const tod = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
 const fmtKo = (k) => { const [, m, d] = k.split("-"); return `${+m}/${+d}`; };
+const fmtMD = (k) => { if (!k) return ""; const [, m, d] = k.split("-"); return `${+m}월 ${+d}일`; };
 const daysBetween = (a, b) => Math.round((b - a) / 86400000);
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -45,8 +48,25 @@ const EDGE_BUFFER_PX = 3 * DAY_WIDTH;
    Main
    ══════════════════════════════════════════════════════════ */
 export default function ProjectTimeline({ projects, actions, loading }) {
-  const { addProject, updateProject, deleteProject, addSub, updateSub, deleteSub } = actions;
+  const { addProject, updateProject, deleteProject, addSub, updateSub, deleteSub, reorderSubs } = actions;
   const [addOpen, setAddOpen] = useState(false);
+  /* Refs for each ProjectCard so the timeline can scroll to a card on click. */
+  const cardRefs = useRef({});
+  const scrollToCard = (pid) => {
+    const el = cardRefs.current[pid];
+    if (!el) return;
+    /* Offset by the sticky header + tab nav so the card's top isn't hidden
+       behind the pinned area. Measured at click time because sticky layout
+       changes with viewport width. */
+    const sticky = document.querySelector(".pt-sticky-top");
+    const nav = document.querySelector(".tab-nav");
+    const navH = nav ? nav.getBoundingClientRect().height : 0;
+    const stickyH = sticky ? sticky.getBoundingClientRect().height : 0;
+    const y = el.getBoundingClientRect().top + window.scrollY - navH - stickyH - 16;
+    window.scrollTo({ top: y, behavior: "smooth" });
+    el.classList.add("pt-card-flash");
+    setTimeout(() => el.classList.remove("pt-card-flash"), 1200);
+  };
 
   return (
     <div className="pt-wrap">
@@ -56,38 +76,45 @@ export default function ProjectTimeline({ projects, actions, loading }) {
         onSubmit={({ text, start, end }) => addProject({ text, start, end, pal: randomPalKey() })}
       />
 
-      {/* Header */}
-      <div style={{
-        display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16,
-      }}>
-        <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5 }}>프로젝트</div>
-        <button
-          onClick={() => setAddOpen(true)}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            padding: "8px 14px", border: "none", borderRadius: 10,
-            background: "var(--ink)", color: "#fff",
-            fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer",
-          }}
-        >
-          <Plus size={15} /> 새 프로젝트
-        </button>
-      </div>
-
       {loading ? (
         <div style={{ color: "var(--ink3)", padding: 40, textAlign: "center" }}>로딩 중...</div>
       ) : (
         <>
+          {/* Sticky top contains ONLY title + date ruler. The project rows of
+              the timeline render below and scroll with the page. */}
+          <div className="pt-sticky-top">
+            <div style={{
+              display: "flex", alignItems: "baseline", justifyContent: "space-between",
+              marginBottom: 12, paddingTop: 16,
+            }}>
+              <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5 }}>프로젝트</div>
+              <button
+                onClick={() => setAddOpen(true)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "8px 14px", border: "none", borderRadius: 10,
+                  background: "var(--ink)", color: "#fff",
+                  fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                }}
+              >
+                <Plus size={15} /> 새 프로젝트
+              </button>
+            </div>
+            <div id="pt-ruler-slot" />
+          </div>
+
           <TimelineTrack
             projects={projects}
             onUpdateProject={updateProject}
+            onSelectProject={scrollToCard}
           />
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {projects.map((p) => (
               <ProjectCard
                 key={p.id}
                 project={p}
+                cardRef={(el) => { if (el) cardRefs.current[p.id] = el; else delete cardRefs.current[p.id]; }}
                 onUpdate={(updates) => updateProject(p.id, updates)}
                 onDelete={() => {
                   if (window.confirm(`"${p.text}" 프로젝트를 삭제할까요?`)) deleteProject(p.id);
@@ -95,6 +122,7 @@ export default function ProjectTimeline({ projects, actions, loading }) {
                 onAddSub={(text) => addSub(p.id, text)}
                 onUpdateSub={(sid, updates) => updateSub(p.id, sid, updates)}
                 onDeleteSub={(sid) => deleteSub(p.id, sid)}
+                onReorderSubs={(newOrder) => reorderSubs && reorderSubs(p.id, newOrder)}
               />
             ))}
           </div>
@@ -107,46 +135,88 @@ export default function ProjectTimeline({ projects, actions, loading }) {
 /* ══════════════════════════════════════════════════════════
    Timeline (horizontal, infinite scroll)
    ══════════════════════════════════════════════════════════ */
-function TimelineTrack({ projects, onUpdateProject }) {
+function TimelineTrack({ projects, onUpdateProject, onSelectProject }) {
   /* Range is open-ended: we grow it at either edge as the user scrolls.
      To avoid a scroll-position jump when PREPENDING, we apply a matching
      scrollLeft offset in a useLayoutEffect before the browser paints. */
   const [rangeStart, setRangeStart] = useState(() => addD(tod(), -120));
   const [rangeDays, setRangeDays] = useState(400);
 
-  const scrollRef = useRef(null);
-  const adjustingRef = useRef(false);      // suppress scroll-handler while we're the one moving scrollLeft
-  const pendingAdjustRef = useRef(0);      // px to add to scrollLeft after next render
+  /* Two horizontally-synced scroll viewports: the ruler is in the sticky
+     header (it pins to the top on page scroll), and the rows scroll with
+     the page. Either can initiate horizontal scroll; we mirror scrollLeft
+     into the other. */
+  const rulerScrollRef = useRef(null);
+  const rowsScrollRef = useRef(null);
+  /* Portal the ruler into the sticky slot so the title + ruler pin together
+     while project rows render (and scroll with the page) below. */
+  const [rulerSlot, setRulerSlot] = useState(null);
+  useEffect(() => {
+    setRulerSlot(document.getElementById("pt-ruler-slot"));
+  }, []);
+
+  const adjustingRef = useRef(false);
+  const pendingAdjustRef = useRef(0);
   const initialScrolledRef = useRef(false);
+  const syncingRef = useRef(false);  /* suppress mirror-echo */
+
+  const [view, setView] = useState({ x: 0, w: 0 });
 
   const todayK = dk(tod());
   const totalWidth = rangeDays * DAY_WIDTH;
 
-  /* Initial scroll: center today horizontally — only once. */
+  /* Center today on first render. Sync BOTH containers so the ruler shows
+     the same slice as the rows on load. */
   useLayoutEffect(() => {
     if (initialScrolledRef.current) return;
-    const el = scrollRef.current;
-    if (!el) return;
+    const rows = rowsScrollRef.current;
+    const ruler = rulerScrollRef.current;
+    if (!rows || !ruler) return;
     const x = daysBetween(rangeStart, tod()) * DAY_WIDTH;
+    const target = Math.max(0, x - rows.clientWidth / 2);
     adjustingRef.current = true;
-    el.scrollLeft = Math.max(0, x - el.clientWidth / 2);
+    rows.scrollLeft = target;
+    ruler.scrollLeft = target;
     requestAnimationFrame(() => { adjustingRef.current = false; });
     initialScrolledRef.current = true;
+    setView({ x: rows.scrollLeft, w: rows.clientWidth });
   }, [rangeStart]);
 
-  /* Apply pending scroll adjustment (after a prepend) */
+  useEffect(() => {
+    const el = rowsScrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      setView(() => ({ x: el.scrollLeft, w: el.clientWidth }));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   useLayoutEffect(() => {
-    if (!pendingAdjustRef.current || !scrollRef.current) return;
+    if (!pendingAdjustRef.current) return;
+    const rows = rowsScrollRef.current;
+    const ruler = rulerScrollRef.current;
+    if (!rows || !ruler) return;
     adjustingRef.current = true;
-    scrollRef.current.scrollLeft += pendingAdjustRef.current;
+    rows.scrollLeft += pendingAdjustRef.current;
+    ruler.scrollLeft = rows.scrollLeft;
     pendingAdjustRef.current = 0;
     requestAnimationFrame(() => { adjustingRef.current = false; });
   });
 
-  const onScroll = (e) => {
-    if (adjustingRef.current) return;
+  /* Mirror scroll from one container to the other. The source of truth for
+     edge-detection / infinite extend is the ROWS scroll container — the
+     ruler is purely a visual mirror. */
+  const onRowsScroll = (e) => {
     const sl = e.target.scrollLeft;
     const cw = e.target.clientWidth;
+    setView({ x: sl, w: cw });
+    if (!syncingRef.current && rulerScrollRef.current && rulerScrollRef.current.scrollLeft !== sl) {
+      syncingRef.current = true;
+      rulerScrollRef.current.scrollLeft = sl;
+      requestAnimationFrame(() => { syncingRef.current = false; });
+    }
+    if (adjustingRef.current) return;
     if (sl < EDGE_BUFFER_PX) {
       pendingAdjustRef.current = EXTEND_DAYS * DAY_WIDTH;
       setRangeStart((prev) => addD(prev, -EXTEND_DAYS));
@@ -155,12 +225,32 @@ function TimelineTrack({ projects, onUpdateProject }) {
       setRangeDays((d) => d + EXTEND_DAYS);
     }
   };
+  const onRulerScroll = (e) => {
+    const sl = e.target.scrollLeft;
+    if (!syncingRef.current && rowsScrollRef.current && rowsScrollRef.current.scrollLeft !== sl) {
+      syncingRef.current = true;
+      rowsScrollRef.current.scrollLeft = sl;
+      requestAnimationFrame(() => { syncingRef.current = false; });
+    }
+  };
 
-  return (
-    <div className="pt-timeline" ref={scrollRef} onScroll={onScroll}>
+  const rulerNode = (
+    <div className="pt-timeline pt-timeline-ruler" ref={rulerScrollRef} onScroll={onRulerScroll}>
       <div className="pt-track" style={{ width: totalWidth }}>
         <DateHeader rangeStart={rangeStart} rangeDays={rangeDays} todayK={todayK} />
-        <div className="pt-body" style={{ position: "relative" }}>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Ruler is portalled into the .pt-sticky-top slot; falls back inline
+          before the slot mounts so it never disappears from the layout. */}
+      {rulerSlot ? createPortal(rulerNode, rulerSlot) : rulerNode}
+      {/* Rows — NOT sticky; scrolls with page. Shares scrollLeft with the ruler above. */}
+      <div className="pt-timeline pt-timeline-rows" ref={rowsScrollRef} onScroll={onRowsScroll}>
+        <div className="pt-track" style={{ width: totalWidth }}>
+          <div className="pt-body" style={{ position: "relative" }}>
           {projects.map((p, i) => (
             <TimelineRow
               key={p.id}
@@ -168,7 +258,9 @@ function TimelineTrack({ projects, onUpdateProject }) {
               rangeStart={rangeStart}
               rowIndex={i}
               onUpdate={(upd) => onUpdateProject(p.id, upd)}
-              scrollRef={scrollRef}
+              onSelect={() => onSelectProject && onSelectProject(p.id)}
+              scrollRef={rowsScrollRef}
+              view={view}
             />
           ))}
           {projects.length === 0 && (
@@ -178,9 +270,10 @@ function TimelineTrack({ projects, onUpdateProject }) {
               프로젝트를 추가하면 타임라인이 표시됩니다.
             </div>
           )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -197,9 +290,11 @@ function DateHeader({ rangeStart, rangeDays, todayK }) {
     const wd = d.getDay();
     const isToday = k === todayK;
     const centerX = i * DAY_WIDTH + DAY_WIDTH / 2;
-    const color = isToday ? "var(--blue)"
-      : wd === 0 ? "#B33030"
-      : wd === 6 ? "var(--blue)"
+    /* Sat/Sun ruler colors — peach family per Figma (the today-highlight
+       tick uses #DAAEAE so the weekend palette stays in that warm range). */
+    const color = isToday ? "#D48888"
+      : wd === 0 ? "#D48888"
+      : wd === 6 ? "#DAAEAE"
       : "var(--ink2)";
     labels.push(
       <div key={k} style={{
@@ -224,7 +319,7 @@ function DateHeader({ rangeStart, rangeDays, todayK }) {
            line at y=89). Bottom aligned = share the line's bottom pixel. */
         bottom: 0,
         width: 1, height: 7,
-        background: isToday ? "var(--blue)" : "var(--bd2)",
+        background: isToday ? "#D48888" : "var(--bd2)",
       }} />
     );
   }
@@ -246,7 +341,7 @@ function DateHeader({ rangeStart, rangeDays, todayK }) {
 /* ══════════════════════════════════════════════════════════
    A single project row — line + dots + label + drag handles
    ══════════════════════════════════════════════════════════ */
-function TimelineRow({ project, rangeStart, rowIndex, onUpdate, scrollRef }) {
+function TimelineRow({ project, rangeStart, rowIndex, onUpdate, onSelect, scrollRef, view }) {
   const pal = resolvePal(project);
   const startD = pk(project.start);
   const endD = pk(project.end);
@@ -255,30 +350,81 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, scrollRef }) {
      container, so children's top is in row-local coords (not pt-body coords).
      rowIndex is kept only for debugging / future use. */
   void rowIndex;
+  void scrollRef;
   const startX = daysBetween(rangeStart, startD) * DAY_WIDTH + DAY_WIDTH / 2;
   const endX = daysBetween(rangeStart, endD) * DAY_WIDTH + DAY_WIDTH / 2;
   const lineY = ROW_HEIGHT / 2;
 
-  /* Intermediate dots — one per subtask.
-     Position = subtask.deadline on the shared day axis when set; otherwise
-     fall back to an even split between start and end. A dot is filled when
-     the subtask is done; hollow otherwise. */
-  const midDots = project.subs.map((s, i) => {
-    const x = s.deadline
-      ? daysBetween(rangeStart, pk(s.deadline)) * DAY_WIDTH + DAY_WIDTH / 2
-      : startX + (endX - startX) * ((i + 1) / (project.subs.length + 1));
-    return { sid: s.sid, x, done: s.done };
-  });
+  /* ── Hover summary card (on line) + subtask popup (on dot) ──
+     Line hover opens the full subtask-list summary; dot hover opens a small
+     popup showing just that subtask's text. An 80ms hide-debounce prevents
+     flicker when the cursor crosses between adjacent hover targets. */
+  const lineRef = useRef(null);
+  const hideTimerRef = useRef(null);
+  const dotHideTimerRef = useRef(null);
+  const [tip, setTip] = useState(null);       // project-summary card { x, y }
+  const [dotTip, setDotTip] = useState(null); // subtask popup { sid, text, done, x, y }
+
+  const cancelHide = () => {
+    if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
+  };
+  const showTip = () => {
+    if (dragRef.current) return;
+    cancelHide();
+    const el = lineRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setTip({ x: r.left, y: r.bottom + 8 });
+  };
+  const scheduleHide = () => {
+    cancelHide();
+    hideTimerRef.current = setTimeout(() => setTip(null), 80);
+  };
+  useEffect(() => () => { cancelHide(); if (dotHideTimerRef.current) clearTimeout(dotHideTimerRef.current); }, []);
+  const hoverHandlers = {
+    onMouseEnter: showTip,
+    onMouseLeave: scheduleHide,
+  };
+
+  const showDotTip = (sub, el) => {
+    if (dragRef.current) return;
+    if (dotHideTimerRef.current) { clearTimeout(dotHideTimerRef.current); dotHideTimerRef.current = null; }
+    const r = el.getBoundingClientRect();
+    setDotTip({
+      sid: sub.sid,
+      text: sub.text,
+      done: sub.done,
+      x: r.left + r.width / 2,
+      y: r.top - 6,
+    });
+  };
+  const hideDotTip = () => {
+    if (dotHideTimerRef.current) clearTimeout(dotHideTimerRef.current);
+    dotHideTimerRef.current = setTimeout(() => setDotTip(null), 80);
+  };
+
+  /* Intermediate dots — only subtasks WITH a deadline show up on the timeline.
+     Position = subtask.deadline on the shared day axis.
+     A dot is filled when the subtask is done; hollow otherwise. */
+  const midDots = project.subs
+    .filter((s) => s.deadline)
+    .map((s) => ({
+      sid: s.sid,
+      x: daysBetween(rangeStart, pk(s.deadline)) * DAY_WIDTH + DAY_WIDTH / 2,
+      done: s.done,
+    }));
 
   /* ── Drag state ──
      mode: 'start' | 'end' | 'move'
      Work in scroll-container coordinates (element bbox + scrollLeft) so the
      drag stays correct even as the user scrolls mid-drag. */
   const dragRef = useRef(null);
+  const movedRef = useRef(false);
 
   const beginDrag = (mode, e) => {
     e.preventDefault();
     e.stopPropagation();
+    movedRef.current = false;
     dragRef.current = {
       mode,
       origStart: startD,
@@ -292,6 +438,7 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, scrollRef }) {
   const onDragMove = (e) => {
     const d = dragRef.current;
     if (!d) return;
+    if (Math.abs(e.clientX - d.startClientX) > 3) movedRef.current = true;
     const deltaDays = Math.round((e.clientX - d.startClientX) / DAY_WIDTH);
     if (d.mode === "start") {
       const newStart = addD(d.origStart, deltaDays);
@@ -315,16 +462,36 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, scrollRef }) {
 
   return (
     <div className="pt-row" style={{ height: ROW_HEIGHT, position: "relative" }}>
+      {/* Invisible hover hitbox — the line itself is only 2px tall, which is
+         way too thin to hover comfortably. This zone extends vertically
+         ±20px around the line and laterally past both endpoints so the
+         tooltip opens reliably. Sits BEHIND line/dots (zIndex 1) so their
+         own mouseDown handlers still run. */}
+      <div
+        {...hoverHandlers}
+        style={{
+          position: "absolute",
+          left: Math.min(startX, endX) - 12,
+          width: Math.abs(endX - startX) + 24,
+          top: lineY - 20,
+          height: 40,
+          zIndex: 1,
+        }}
+      />
+
       {/* Line */}
       <div
+        ref={lineRef}
         onMouseDown={(e) => beginDrag("move", e)}
+        onClick={() => { if (!movedRef.current) onSelect?.(); }}
+        {...hoverHandlers}
         style={{
           position: "absolute",
           left: startX, width: endX - startX,
           top: lineY - LINE_THICKNESS / 2,
           height: LINE_THICKNESS,
           background: pal.main,
-          cursor: "grab",
+          cursor: "pointer",
           zIndex: 2,
         }}
       />
@@ -336,12 +503,31 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, scrollRef }) {
         filled
         onMouseDown={(e) => beginDrag("start", e)}
         cursor="ew-resize"
+        hoverHandlers={hoverHandlers}
       />
 
       {/* Intermediate (subtask) dots */}
-      {midDots.map((d) => (
-        <Dot key={d.sid} x={d.x} y={lineY} color={pal.main} filled={d.done} />
-      ))}
+      {midDots.map((d) => {
+        const sub = project.subs.find((s) => s.sid === d.sid);
+        return (
+          <Dot
+            key={d.sid}
+            x={d.x} y={lineY}
+            color={pal.main}
+            filled={d.done}
+            hoverHandlers={{
+              onMouseEnter: (e) => {
+                showTip();
+                if (sub) showDotTip(sub, e.currentTarget);
+              },
+              onMouseLeave: () => {
+                scheduleHide();
+                hideDotTip();
+              },
+            }}
+          />
+        );
+      })}
 
       {/* End dot (filled) */}
       <Dot
@@ -350,30 +536,147 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, scrollRef }) {
         filled
         onMouseDown={(e) => beginDrag("end", e)}
         cursor="ew-resize"
+        hoverHandlers={hoverHandlers}
       />
 
-      {/* Label — below the line, left-aligned to start */}
-      <div style={{
-        position: "absolute",
-        left: startX + 10,
-        top: lineY + DOT_SIZE / 2 + 4,
-        fontSize: 13,
-        fontWeight: 700,
-        color: project.done ? "var(--ink3)" : "var(--ink)",
-        textDecoration: project.done ? "line-through" : "none",
-        whiteSpace: "nowrap",
-        pointerEvents: "none",
-      }}>
-        {project.text}
-      </div>
+      {/* Label — centered on the VISIBLE slice of the line (intersection of
+         the line with the current viewport). Falls back to full-line center
+         until `view` is measured. */}
+      {(() => {
+        const viewLeft = view?.w ? view.x : startX;
+        const viewRight = view?.w ? view.x + view.w : endX;
+        const vL = Math.max(startX, viewLeft);
+        const vR = Math.min(endX, viewRight);
+        const visible = vR > vL;
+        const centerX = visible ? (vL + vR) / 2 : (startX + endX) / 2;
+        return (
+          <div
+            {...hoverHandlers}
+            onClick={() => onSelect?.()}
+            style={{
+              position: "absolute",
+              left: centerX,
+              transform: "translateX(-50%)",
+              top: lineY + DOT_SIZE / 2 + 6,
+              textAlign: "center",
+              fontSize: 14,
+              fontWeight: 500,
+              color: project.done ? "var(--ink3)" : "var(--ink)",
+              textDecoration: project.done ? "line-through" : "none",
+              whiteSpace: "nowrap",
+              pointerEvents: "auto",
+              cursor: "pointer",
+            }}
+          >
+            {project.text}
+          </div>
+        );
+      })()}
+
+      {tip && createPortal(
+        <SummaryCard project={project} pal={pal} x={tip.x} y={tip.y} />,
+        document.body,
+      )}
+      {dotTip && createPortal(
+        <SubtaskPopup
+          text={dotTip.text}
+          done={dotTip.done}
+          pal={pal}
+          x={dotTip.x}
+          y={dotTip.y}
+        />,
+        document.body,
+      )}
     </div>
   );
 }
 
-function Dot({ x, y, color, filled, onMouseDown, cursor }) {
+/* Subtask popup — "팝업" (filled) when subtask is done, "중간 팝업"
+   (white bg, colored text) when pending. Positioned above the hovered dot. */
+function SubtaskPopup({ text, done, pal, x, y }) {
+  const solid = done;
+  return (
+    <div style={{
+      position: "fixed",
+      left: x,
+      top: y,
+      transform: "translate(-50%, -100%)",
+      maxWidth: 260,
+      padding: "7px 14px",
+      background: solid ? pal.main : "#fff",
+      color: solid ? "#fff" : pal.text,
+      border: solid ? "none" : `1px solid ${pal.main}`,
+      borderRadius: 10,
+      fontSize: 12,
+      fontWeight: 600,
+      lineHeight: 1.3,
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      boxShadow: "0 4px 14px rgba(0,0,0,.12)",
+      zIndex: 1001,
+      pointerEvents: "none",
+    }}>
+      {text}
+    </div>
+  );
+}
+
+/* Project summary card (hover tooltip) — mirrors Figma's pink card style. */
+function SummaryCard({ project, pal, x, y }) {
+  return (
+    <div style={{
+      position: "fixed",
+      left: x,
+      top: y,
+      minWidth: 200,
+      maxWidth: 280,
+      background: pal.main,
+      color: "#fff",
+      borderRadius: 10,
+      padding: "14px 18px 16px",
+      boxShadow: "0 6px 20px rgba(0,0,0,.15)",
+      zIndex: 1000,
+      pointerEvents: "none",
+    }}>
+      <div style={{
+        fontSize: 15,
+        fontWeight: 700,
+        marginBottom: project.subs.length ? 8 : 0,
+        lineHeight: 1.3,
+      }}>
+        {project.text}
+      </div>
+      {project.subs.length > 0 && (
+        <ul style={{
+          margin: 0,
+          paddingLeft: 18,
+          fontSize: 12,
+          lineHeight: 1.6,
+          listStyle: "disc",
+        }}>
+          {project.subs.map((s) => (
+            <li
+              key={s.sid}
+              style={{
+                textDecoration: s.done ? "line-through" : "none",
+                opacity: s.done ? 0.75 : 1,
+              }}
+            >
+              {s.text}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function Dot({ x, y, color, filled, onMouseDown, cursor, hoverHandlers }) {
   return (
     <div
       onMouseDown={onMouseDown}
+      {...(hoverHandlers || {})}
       style={{
         position: "absolute",
         left: x - DOT_SIZE / 2,
@@ -408,10 +711,70 @@ function Check({ checked, size = 20, onClick }) {
   );
 }
 
-function ProjectCard({ project, onUpdate, onDelete, onAddSub, onUpdateSub, onDeleteSub }) {
+/* Compact date pill — custom display layered over an invisible native date
+   input so the calendar picker still opens, but the visual size + label
+   (e.g. "3월 1일") match Figma's tight layout that native inputs can't honor.
+   `tone`: "light" (white) or "muted" (gray, for completed rows). */
+function MiniDateBtn({ value, onChange, placeholder = "일자", tone = "light", minWidth = 44 }) {
+  const inputRef = useRef(null);
+  const open = (e) => {
+    e.preventDefault();
+    const el = inputRef.current;
+    if (!el) return;
+    if (typeof el.showPicker === "function") {
+      try { el.showPicker(); return; } catch { /* fallthrough */ }
+    }
+    el.focus();
+  };
+  const muted = tone === "muted";
+  return (
+    <div
+      onClick={open}
+      style={{
+        position: "relative",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: 20,
+        minWidth,
+        padding: "0 8px",
+        fontSize: 11,
+        fontWeight: 600,
+        color: value ? (muted ? "#fff" : "var(--ink2)") : (muted ? "rgba(255,255,255,.85)" : "var(--ink3)"),
+        background: muted ? "#757575" : "var(--sf)",
+        border: `1px solid ${muted ? "#757575" : "var(--bd)"}`,
+        borderRadius: 10,
+        cursor: "pointer",
+        userSelect: "none",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {value ? fmtMD(value) : placeholder}
+      <input
+        ref={inputRef}
+        type="date"
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: 0,
+          pointerEvents: "none",
+          border: 0,
+        }}
+      />
+    </div>
+  );
+}
+
+function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateSub, onDeleteSub, onReorderSubs }) {
   const pal = resolvePal(project);
   const subAddRef = useRef(null);
   const [editingSid, setEditingSid] = useState(null);
+  const [collapsed, setCollapsed] = useState(false);
+  const [palOpen, setPalOpen] = useState(false);
+  const [dragSid, setDragSid] = useState(null);
+  const [dragOverSid, setDragOverSid] = useState(null);
 
   const doneCount = project.subs.filter((s) => s.done).length;
   const total = project.subs.length;
@@ -424,17 +787,41 @@ function ProjectCard({ project, onUpdate, onDelete, onAddSub, onUpdateSub, onDel
     subAddRef.current.value = "";
   };
 
+  const status = pct === 100 && total > 0 ? "완료" : "진행중";
+  const isDone = pct === 100 && total > 0;
+  /* Column widths aligned with Figma "After" (목표 52 / 완료 52 / delete 17). */
+  const COL_TARGET = 52;
+  const COL_DONE = 52;
+  const COL_DEL = 17;
+
   return (
-    <div className="task-card" style={{
+    <div ref={cardRef} className="task-card" style={{
       background: "var(--sf)",
-      border: "1px solid var(--bd)",
-      borderLeft: `4px solid ${pal.main}`,
+      border: "1px solid var(--bd2)",
       borderRadius: 14,
-      padding: 14,
-      opacity: project.done ? 0.6 : 1,
+      padding: "32px 23px 21px",
+      opacity: isDone ? 0.65 : 1,
+      position: "relative",
+      scrollMarginTop: 16,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-        <Check checked={project.done} size={22} onClick={() => onUpdate({ done: !project.done })} />
+      {/* Title row — Figma: chevron + title + pct (no checkbox; trash on hover) */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <button
+          onClick={() => setCollapsed((v) => !v)}
+          title={collapsed ? "펼치기" : "접기"}
+          aria-label={collapsed ? "펼치기" : "접기"}
+          style={{
+            border: "none", background: "none", cursor: "pointer",
+            padding: 0, margin: 0, width: 14, height: 14,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "var(--ink2)",
+            transform: collapsed ? "rotate(-90deg)" : "rotate(0)",
+            transition: "transform .15s",
+            flexShrink: 0,
+          }}
+        >
+          <ChevronDown size={12} strokeWidth={2.5} />
+        </button>
         <input
           type="text"
           defaultValue={project.text}
@@ -445,63 +832,208 @@ function ProjectCard({ project, onUpdate, onDelete, onAddSub, onUpdateSub, onDel
           }}
           onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
           style={{
-            flex: 1, fontFamily: "inherit", fontSize: 15, fontWeight: 700,
+            flex: 1, fontFamily: "inherit", fontSize: 18, fontWeight: 700,
             border: "none", background: "transparent", outline: "none",
             color: "var(--ink)",
-            textDecoration: project.done ? "line-through" : "none",
+            textDecoration: isDone ? "line-through" : "none",
+            padding: 0,
           }}
         />
-        <button
-          className="hover-btn"
-          onClick={onDelete}
-          style={{
-            border: "none", background: "none", cursor: "pointer", color: "var(--ink3)",
-            padding: 4, display: "flex", alignItems: "center",
-          }}
-          title="프로젝트 삭제"
-        >
-          <Trash2 size={16} />
-        </button>
+        <span style={{ fontSize: 18, fontWeight: 700, color: "var(--ink2)" }}>
+          {pct}%
+        </span>
       </div>
 
+      {/* Hover-only delete button — top-right of card */}
+      <button
+        className="card-del-btn"
+        onClick={onDelete}
+        title="프로젝트 삭제"
+        style={{
+          position: "absolute",
+          top: 10, right: 10,
+          opacity: 0,
+          transition: "opacity .15s",
+          border: "none", background: "none", cursor: "pointer",
+          color: "var(--ink3)",
+          padding: 4, display: "flex", alignItems: "center",
+        }}
+      >
+        <Trash2 size={14} />
+      </button>
+
+      {/* Meta row: mini date pills + color swatch + progress + status */}
       <div style={{
-        display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center",
+        display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center",
         fontSize: 12, color: "var(--ink2)", marginBottom: 10,
       }}>
-        <input type="date" value={project.start} onChange={(e) => onUpdate({ start: e.target.value })} style={dateInputS} />
-        <span style={{ color: "var(--ink3)" }}>—</span>
-        <input type="date" value={project.end} onChange={(e) => onUpdate({ end: e.target.value })} style={dateInputS} />
-        <select
-          value={project.pal}
-          onChange={(e) => onUpdate({ pal: e.target.value })}
-          style={{
-            border: "1px solid var(--bd)", borderRadius: 6, padding: "3px 6px",
-            fontSize: 12, fontFamily: "inherit", background: "var(--sf)",
-            color: "var(--ink2)", cursor: "pointer", outline: "none",
-          }}
-        >
-          {Object.entries(PAL).map(([k, v]) => (
-            <option key={k} value={k}>{v.label}</option>
-          ))}
-        </select>
+        <MiniDateBtn value={project.start} onChange={(v) => v && onUpdate({ start: v })} />
+        <span style={{ color: "var(--ink3)", margin: "0 2px" }}>→</span>
+        <MiniDateBtn value={project.end} onChange={(v) => v && onUpdate({ end: v })} />
+
+        {/* Color swatch — Figma Color Input: 16px circle + small chevron.
+            Custom popover shows circles (not names) per 참고 column. */}
+        <div style={{
+          position: "relative",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          height: 16,
+          marginLeft: 2,
+        }}>
+          <button
+            type="button"
+            onClick={() => setPalOpen((v) => !v)}
+            aria-label="색상 선택"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              border: "none", background: "none", padding: 0, cursor: "pointer",
+            }}
+          >
+            <span style={{
+              width: 16, height: 16, borderRadius: "50%", background: pal.main,
+              flexShrink: 0,
+            }} />
+            <ChevronDown size={9} strokeWidth={2.2} color="var(--ink3)" />
+          </button>
+          {palOpen && (
+            <>
+              <div
+                onClick={() => setPalOpen(false)}
+                style={{ position: "fixed", inset: 0, zIndex: 20 }}
+              />
+              <div style={{
+                position: "absolute",
+                top: 22, left: 0,
+                background: "var(--sf)",
+                border: "1px solid var(--bd2)",
+                borderRadius: 10,
+                padding: 8,
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 20px)",
+                gap: 6,
+                boxShadow: "0 6px 18px rgba(0,0,0,.12)",
+                zIndex: 21,
+              }}>
+                {PAL_KEYS.map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    title={PAL[k].label}
+                    onClick={() => { onUpdate({ pal: k }); setPalOpen(false); }}
+                    style={{
+                      width: 20, height: 20, borderRadius: "50%",
+                      background: PAL[k].main,
+                      border: project.pal === k ? "2px solid var(--ink)" : "1px solid rgba(0,0,0,.08)",
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div style={{ flex: 1 }} />
+
         {total > 0 && (
-          <span style={{ marginLeft: "auto", fontWeight: 600 }}>
-            {doneCount}/{total} ({pct}%)
-          </span>
+          <>
+            <span style={pillS}>{doneCount}/{total}</span>
+            <span style={pillS}>{status}</span>
+          </>
         )}
       </div>
 
-      {total > 0 && (
-        <div style={{ height: 4, background: "var(--sf2)", borderRadius: 4, overflow: "hidden", marginBottom: 10 }}>
-          <div style={{ height: "100%", width: `${pct}%`, background: pal.main, borderRadius: 4, transition: "width .3s" }} />
+      {/* Progress bar */}
+      <div style={{
+        height: 4, background: "var(--sf2)", borderRadius: 4,
+        overflow: "hidden", marginBottom: 12,
+      }}>
+        <div style={{
+          height: "100%", width: `${pct}%`, background: pal.main,
+          borderRadius: 4, transition: "width .3s",
+        }} />
+      </div>
+
+      {/* Column header */}
+      {total > 0 && !collapsed && (
+        <div style={{
+          display: "flex", alignItems: "center",
+          padding: "8px 0",
+          borderBottom: "1px solid var(--bd)",
+          fontSize: 12, fontWeight: 400, color: "var(--ink)",
+          marginBottom: 2,
+        }}>
+          <div style={{ flex: 1 }}>세부 내용</div>
+          <div style={{ width: COL_TARGET, textAlign: "center" }}>목표 일자</div>
+          <div style={{ width: 8 }} />
+          <div style={{ width: COL_DONE, textAlign: "center" }}>완료 일자</div>
+          <div style={{ width: COL_DEL }} />
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {/* Subtasks */}
+      {!collapsed && (
+      <div style={{ display: "flex", flexDirection: "column" }}>
         {project.subs.map((s) => (
-          <div key={s.sid} className="sub-row" style={{
-            display: "flex", alignItems: "center", gap: 8, padding: "4px 0",
-          }}>
+          <div
+            key={s.sid}
+            className="sub-row"
+            onDragOver={(e) => {
+              if (dragSid == null || dragSid === s.sid) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              setDragOverSid(s.sid);
+            }}
+            onDragLeave={() => {
+              if (dragOverSid === s.sid) setDragOverSid(null);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragSid == null || dragSid === s.sid) return;
+              const ids = project.subs.map((x) => x.sid);
+              const from = ids.indexOf(dragSid);
+              const to = ids.indexOf(s.sid);
+              if (from < 0 || to < 0) return;
+              const reordered = ids.slice();
+              reordered.splice(from, 1);
+              reordered.splice(to, 0, dragSid);
+              onReorderSubs(reordered);
+              setDragSid(null);
+              setDragOverSid(null);
+            }}
+            style={{
+              display: "flex", alignItems: "flex-start", gap: 0,
+              padding: "6px 0",
+              borderTop: dragOverSid === s.sid ? "2px solid var(--ink)" : "2px solid transparent",
+              opacity: dragSid === s.sid ? 0.4 : 1,
+              position: "relative",
+            }}
+          >
+            {/* Drag handle — visible on row hover, the only draggable element */}
+            <span
+              className="sub-grip"
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", String(s.sid));
+                setDragSid(s.sid);
+              }}
+              onDragEnd={() => { setDragSid(null); setDragOverSid(null); }}
+              title="드래그하여 순서 변경"
+              style={{
+                position: "absolute",
+                left: -18, top: 7,
+                opacity: 0,
+                transition: "opacity .15s",
+                color: "var(--ink3)",
+                cursor: "grab",
+                display: "flex", alignItems: "center", userSelect: "none",
+              }}
+            >
+              <GripVertical size={14} />
+            </span>
             <Check
               size={16}
               checked={s.done}
@@ -510,72 +1042,83 @@ function ProjectCard({ project, onUpdate, onDelete, onAddSub, onUpdateSub, onDel
                 done_at: !s.done ? dk(new Date()) : null,
               })}
             />
-            {editingSid === s.sid ? (
-              <input
-                autoFocus
-                defaultValue={s.text}
-                onBlur={(e) => {
-                  const v = e.target.value.trim();
-                  if (v && v !== s.text) onUpdateSub(s.sid, { text: v });
-                  setEditingSid(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.currentTarget.blur();
-                  if (e.key === "Escape") setEditingSid(null);
-                }}
-                style={{
-                  flex: 1, fontFamily: "inherit", fontSize: 13,
-                  border: "1px solid var(--bd2)", borderRadius: 6,
-                  padding: "3px 6px", outline: "none",
-                }}
+            <div style={{ flex: 1, paddingLeft: 8, minWidth: 0 }}>
+              {editingSid === s.sid ? (
+                <input
+                  autoFocus
+                  defaultValue={s.text}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v && v !== s.text) onUpdateSub(s.sid, { text: v });
+                    setEditingSid(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                    if (e.key === "Escape") setEditingSid(null);
+                  }}
+                  style={{
+                    width: "100%", fontFamily: "inherit", fontSize: 13,
+                    border: "1px solid var(--bd2)", borderRadius: 6,
+                    padding: "3px 6px", outline: "none",
+                  }}
+                />
+              ) : (
+                <span
+                  onClick={() => setEditingSid(s.sid)}
+                  style={{
+                    fontSize: 13,
+                    color: s.done ? "var(--ink3)" : "var(--ink)",
+                    textDecoration: s.done ? "line-through" : "none",
+                    cursor: "text",
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                    display: "block",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {s.text}
+                </span>
+              )}
+            </div>
+            {/* 목표 일자 */}
+            <div style={{ width: COL_TARGET, display: "flex", justifyContent: "center" }}>
+              <MiniDateBtn
+                value={s.deadline}
+                onChange={(v) => onUpdateSub(s.sid, { deadline: v })}
+                minWidth={50}
               />
-            ) : (
-              <span
-                onClick={() => setEditingSid(s.sid)}
+            </div>
+            <div style={{ width: 8 }} />
+            {/* 완료 일자 */}
+            <div style={{ width: COL_DONE, display: "flex", justifyContent: "center" }}>
+              <MiniDateBtn
+                value={s.done_at}
+                onChange={(v) => onUpdateSub(s.sid, {
+                  done_at: v,
+                  done: !!v,
+                })}
+                minWidth={50}
+                tone={s.done ? "muted" : "light"}
+              />
+            </div>
+            <div style={{ width: COL_DEL, display: "flex", justifyContent: "center" }}>
+              <button
+                className="sub-del-btn"
+                onClick={() => onDeleteSub(s.sid)}
                 style={{
-                  flex: 1, fontSize: 13,
-                  color: s.done ? "var(--ink3)" : "var(--ink)",
-                  textDecoration: s.done ? "line-through" : "none",
-                  cursor: "text",
+                  opacity: 0, transition: "opacity .15s",
+                  border: "none", background: "none", cursor: "pointer",
+                  color: "var(--ink3)", padding: 2, display: "flex", alignItems: "center",
                 }}
               >
-                {s.text}
-                {s.done && s.done_at && (
-                  <span style={{ marginLeft: 6, fontSize: 11, color: "var(--ink3)" }}>
-                    {fmtKo(s.done_at)}
-                  </span>
-                )}
-              </span>
-            )}
-            {/* Deadline — positions the hollow dot on the timeline */}
-            <input
-              type="date"
-              value={s.deadline || ""}
-              onChange={(e) => onUpdateSub(s.sid, { deadline: e.target.value || null })}
-              title="마감일"
-              style={{
-                fontFamily: "inherit", fontSize: 11,
-                border: "1px solid var(--bd)", borderRadius: 6,
-                padding: "2px 4px", background: "var(--sf)",
-                color: s.deadline ? "var(--ink2)" : "var(--ink3)",
-                outline: "none", minWidth: 0,
-              }}
-            />
-            <button
-              className="sub-del-btn"
-              onClick={() => onDeleteSub(s.sid)}
-              style={{
-                opacity: 0, transition: "opacity .15s",
-                border: "none", background: "none", cursor: "pointer",
-                color: "var(--ink3)", padding: 2, display: "flex", alignItems: "center",
-              }}
-            >
-              <X size={13} />
-            </button>
+                <X size={13} />
+              </button>
+            </div>
           </div>
         ))}
 
-        <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+        {/* Add subtask */}
+        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
           <input
             ref={subAddRef}
             placeholder="하위 항목 추가..."
@@ -583,7 +1126,7 @@ function ProjectCard({ project, onUpdate, onDelete, onAddSub, onUpdateSub, onDel
             style={{
               flex: 1, fontFamily: "inherit", fontSize: 12,
               border: "1px dashed var(--bd2)", borderRadius: 6,
-              padding: "4px 8px", background: "transparent",
+              padding: "6px 10px", background: "transparent",
               color: "var(--ink2)", outline: "none",
             }}
           />
@@ -591,7 +1134,7 @@ function ProjectCard({ project, onUpdate, onDelete, onAddSub, onUpdateSub, onDel
             onClick={submitAddSub}
             style={{
               border: "none", background: "var(--sf2)", color: "var(--ink2)",
-              borderRadius: 6, padding: "4px 10px", fontSize: 12, fontWeight: 600,
+              borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600,
               cursor: "pointer", fontFamily: "inherit",
             }}
           >
@@ -599,17 +1142,16 @@ function ProjectCard({ project, onUpdate, onDelete, onAddSub, onUpdateSub, onDel
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }
 
-const dateInputS = {
-  border: "1px solid var(--bd)",
-  borderRadius: 6,
-  padding: "3px 6px",
+/* Status label ("4/6", "진행중") — Figma: plain text, no pill container. */
+const pillS = {
   fontSize: 12,
-  fontFamily: "inherit",
-  background: "var(--sf)",
+  fontWeight: 500,
   color: "var(--ink2)",
-  outline: "none",
+  whiteSpace: "nowrap",
+  marginLeft: 6,
 };

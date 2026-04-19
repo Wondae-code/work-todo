@@ -28,13 +28,21 @@ body {
 
 /* Card hover effects */
 .task-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+.pt-card-flash { animation: pt-flash 1.2s ease-out; }
+@keyframes pt-flash {
+  0% { box-shadow: 0 0 0 3px rgba(43,103,217,.35); }
+  100% { box-shadow: 0 0 0 0 rgba(43,103,217,0); }
+}
 .task-card .hover-btn { opacity: 0; transition: opacity .15s; }
 .task-card:hover .hover-btn { opacity: 1 !important; }
+.task-card:hover .card-del-btn { opacity: 1 !important; }
 .sub-row:hover .sub-del-btn { opacity: 1 !important; }
+.sub-row:hover .sub-grip { opacity: 1 !important; }
 
 /* Mobile: always show action buttons */
 @media (max-width: 640px) {
   .task-card .hover-btn { opacity: 1 !important; }
+  .task-card .card-del-btn { opacity: 1 !important; }
   .sub-row .sub-del-btn { opacity: 1 !important; }
 }
 
@@ -44,26 +52,50 @@ body {
 .pt-wrap {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 28px 20px 100px;
+  padding: 0 20px 100px;
+}
+/* Sticky header — only title + date ruler stay pinned on page scroll.
+   Project timeline rows render below and scroll with the page. Sits below
+   the tab nav (~75px). */
+.pt-sticky-top {
+  position: sticky;
+  top: 75px;
+  z-index: 30;
+  background: var(--bg);
+  padding-bottom: 0;
+  margin-bottom: 12px;
+}
+@media (max-width: 640px) {
+  .pt-sticky-top { top: 60px; }
+}
+/* Ruler-only strip (portal target child). Slim padding — no project rows. */
+.pt-timeline-ruler {
+  padding-top: 6px;
+  padding-bottom: 0;
+  border-bottom: 1px solid var(--bd);
+}
+.pt-timeline-ruler .pt-date-header {
+  position: static;
+}
+/* Project rows — not sticky, scrolls with page. */
+.pt-timeline-rows {
+  border-bottom: 1px solid var(--bd);
+  padding-top: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 24px;
 }
 .pt-timeline {
   background: var(--bg);
-  border-top: 1px solid var(--bd);
-  border-bottom: 1px solid var(--bd);
-  margin-top: 24px;
-  margin-bottom: 40px;
-  padding-top: 10px;
-  padding-bottom: 20px;
-  /* The scroll viewport. Vertical is clipped to header+rows; horizontal is
-     the infinite-scroll axis. `overscroll-behavior-x: contain` prevents the
-     gesture from falling through to page navigation (e.g. back-swipe). */
+  margin-top: 0;
+  margin-bottom: 0;
+  /* Scroll viewport — horizontal is the infinite-scroll axis. */
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
+  scrollbar-width: none;           /* Firefox */
+  -ms-overflow-style: none;        /* legacy Edge / IE */
   /* Break out of .pt-wrap's max-width + padding so the timeline spans the
-     entire viewport. The `left: 50%` + `margin-left: -50vw` pair pulls the
-     block to the viewport's left edge regardless of its normal containing
-     block. 100vw covers the full viewport width. */
+     entire viewport. */
   position: relative;
   left: 50%;
   right: 50%;
@@ -71,6 +103,7 @@ body {
   margin-right: -50vw;
   width: 100vw;
 }
+.pt-timeline::-webkit-scrollbar { display: none; }
 .pt-track {
   position: relative;
   user-select: none;
@@ -96,11 +129,11 @@ body {
   position: sticky;
   top: 0;
   z-index: 200;
-  background: var(--bg);
-  border-bottom: 2px solid var(--ink);
+  background: var(--ink);           /* black nav per Figma */
   display: flex;
   align-items: stretch;
   padding: 0 28px;
+  min-height: 75px;
 }
 .tab-nav-title {
   font-size: 20px;
@@ -110,35 +143,36 @@ body {
   align-items: center;
   padding-right: 24px;
   margin-right: 8px;
-  border-right: 1.5px solid var(--bd);
+  color: #fff;
+  border-right: 1.5px solid rgba(255,255,255,.18);
 }
 .tab-nav-btn {
   font-family: inherit;
   font-size: 17px;
   font-weight: 600;
-  padding: 18px 24px 16px;
+  padding: 24px 24px;
   border: none;
   background: none;
   cursor: pointer;
-  color: var(--ink3);
+  color: rgba(255,255,255,.55);
   letter-spacing: -.3px;
   border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
+  margin-bottom: 0;
   transition: color .15s, border-color .15s;
   white-space: nowrap;
 }
-.tab-nav-btn:hover { color: var(--ink2); }
+.tab-nav-btn:hover { color: rgba(255,255,255,.85); }
 .tab-nav-btn.active {
-  color: var(--ink);
-  border-bottom-color: var(--ink);
+  color: #fff;
+  border-bottom-color: #fff;
 }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
 @media (max-width: 640px) {
-  .tab-nav { padding: 0 16px; }
+  .tab-nav { padding: 0 16px; min-height: 60px; }
   .tab-nav-title { font-size: 16px; padding-right: 14px; }
-  .tab-nav-btn { padding: 14px 14px 12px; font-size: 16px; }
+  .tab-nav-btn { padding: 18px 14px; font-size: 16px; }
 }
 
 /* ══════════════════════════════════════════════════════════
