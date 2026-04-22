@@ -192,7 +192,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
   useEffect(() => { setAddDate(dk(curDate)); }, [curDate]);
   const [toast, setToast] = useState({ msg: "", visible: false });
   const [calOpen, setCalOpen] = useState(false);
-  const [calMode, setCalMode] = useState("edit"); // "edit" | "add" | "sub"
+  const [calMode, setCalMode] = useState("edit"); // "edit" | "add" | "sub" | "nav"
   const [calTaskId, setCalTaskId] = useState(null);
   const [calSubId, setCalSubId] = useState(null);
   const [calYear, setCalYear] = useState(today().getFullYear());
@@ -312,6 +312,15 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
     setCalOpen(true);
   };
 
+  /* Open calendar for date-navigation: picking a date jumps the view there. */
+  const openNavCal = () => {
+    setCalMode("nav");
+    setCalTaskId(null);
+    setCalYear(curDate.getFullYear());
+    setCalMonth(curDate.getMonth());
+    setCalOpen(true);
+  };
+
   const pickDate = (k) => {
     if (calMode === "add") {
       setAddDate(k);
@@ -320,6 +329,11 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
     }
     if (calMode === "sub") {
       updateSub(calTaskId, calSubId, { done_at: k });
+      setCalOpen(false);
+      return;
+    }
+    if (calMode === "nav") {
+      setCurDate(parseKey(k));
       setCalOpen(false);
       return;
     }
@@ -335,6 +349,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
 
   const selectedKey = calMode === "add" ? addDate
     : calMode === "sub" ? (tasks.find((x) => x.id === calTaskId)?.subs?.find((s) => s.sid === calSubId)?.done_at || "")
+    : calMode === "nav" ? dk(curDate)
     : (calTaskId != null ? tasks.find((x) => x.id === calTaskId)?.date_key : "");
 
   const cardProps = {
@@ -404,7 +419,15 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14 }}>
           <button onClick={() => setCurDate((d) => new Date(d.getTime() - 864e5))} style={dateNavBtnS}><ChevronLeft size={18} /></button>
           <div>
-            <span style={{ fontSize: 17, fontWeight: 600, margin: "0 4px" }}>{fmtDate(curDate)}</span>
+            <button
+              onClick={openNavCal}
+              title="날짜 선택"
+              style={{
+                fontSize: 17, fontWeight: 600, margin: "0 4px",
+                border: "none", background: "none", padding: "2px 6px", borderRadius: 6,
+                fontFamily: "inherit", color: "inherit", cursor: "pointer",
+              }}
+            >{fmtDate(curDate)}</button>
             <span style={{
               fontSize: 12, fontWeight: 600, borderRadius: 20, padding: "2px 10px",
               background: diff === 0 ? "var(--ink)" : diff > 0 ? "var(--blue-bg)" : "var(--sf2)",

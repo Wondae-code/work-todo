@@ -446,6 +446,25 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, onSelect, scroll
     hideTimerRef.current = setTimeout(() => setTip(null), 80);
   };
   useEffect(() => () => { cancelHide(); if (dotHideTimerRef.current) clearTimeout(dotHideTimerRef.current); }, []);
+
+  /* Any scroll dismisses hover popups immediately. Without this, the popup
+     stays pinned at its original viewport position (position:fixed computed
+     at hover time) while the dot/line it points to scrolls away — visually
+     the popup "follows" scrolling without a valid anchor. */
+  useEffect(() => {
+    if (!tip && !dotTip) return;
+    const dismiss = () => {
+      cancelHide();
+      if (dotHideTimerRef.current) {
+        clearTimeout(dotHideTimerRef.current);
+        dotHideTimerRef.current = null;
+      }
+      setTip(null);
+      setDotTip(null);
+    };
+    window.addEventListener("scroll", dismiss, { passive: true, capture: true });
+    return () => window.removeEventListener("scroll", dismiss, { capture: true });
+  }, [tip, dotTip]);
   const hoverHandlers = {
     onMouseEnter: (e) => showTip(e.currentTarget),
     onMouseLeave: scheduleHide,
