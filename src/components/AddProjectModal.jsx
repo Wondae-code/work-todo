@@ -67,7 +67,7 @@ export default function AddProjectModal({ show, onClose, onSubmit }) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submit()}
+            onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && submit()}
             placeholder="예: 헤라쉴드 신규 디자인"
             style={inputS}
           />

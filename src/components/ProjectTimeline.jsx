@@ -1163,7 +1163,7 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
           <input
             ref={subAddRef}
             placeholder="하위 항목 추가..."
-            onKeyDown={(e) => e.key === "Enter" && submitAddSub()}
+            onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && submitAddSub()}
             style={{
               flex: 1, fontFamily: "inherit", fontSize: 12,
               border: "1px dashed var(--bd2)", borderRadius: 6,
