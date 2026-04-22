@@ -61,19 +61,29 @@ export default function ProjectTimeline({ projects, actions, loading }) {
   /* Refs for each ProjectCard so the timeline can scroll to a card on click. */
   const cardRefs = useRef({});
 
-  /* Floating "차트로 이동" button — shows when the timeline chart has
-     scrolled out of view. Observes .pt-sticky-top; hidden while any part
-     of the sticky ruler (or elements above it) is still on-screen. */
+  /* Floating "차트로 이동" button — shows when the timeline chart rows
+     have scrolled out of view (hidden behind the sticky ruler or above it).
+     Observes .pt-timeline-rows directly; the sticky header itself stays
+     pinned so observing it would never trigger. */
   const [chartHidden, setChartHidden] = useState(false);
   useEffect(() => {
-    const el = document.querySelector(".pt-sticky-top");
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(
-      ([entry]) => setChartHidden(!entry.isIntersecting),
-      { threshold: 0 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
+    if (loading) return;
+    /* Wait a frame for the rows container to mount. */
+    let io;
+    const attach = () => {
+      const el = document.querySelector(".pt-timeline-rows");
+      if (!el || typeof IntersectionObserver === "undefined") return;
+      io = new IntersectionObserver(
+        ([entry]) => setChartHidden(!entry.isIntersecting),
+        { threshold: 0 },
+      );
+      io.observe(el);
+    };
+    const raf = requestAnimationFrame(attach);
+    return () => {
+      cancelAnimationFrame(raf);
+      if (io) io.disconnect();
+    };
   }, [loading]);
   const scrollToChart = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
