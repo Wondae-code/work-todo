@@ -126,7 +126,6 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
   return (
     <div className="task-card" style={{
       background: "var(--sf)", border: "1px solid var(--bd)", borderRadius: 14, marginBottom: 8,
-      borderLeft: `4px solid ${isProj ? "var(--blue)" : "var(--green)"}`,
       opacity: t.done ? 0.5 : 1, transition: "box-shadow .15s",
     }}>
       {/* Row 1: check + title + delete */}
@@ -158,7 +157,7 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
           variant={priV}
           onClick={() => onUpdate(t.id, { priority: (t.priority % 3) + 1 })}
         />
-        <Badge label={isProj ? "프로젝트" : "빠른 업무"} variant={isProj ? "proj" : "quick"} />
+        <Badge label={isProj ? "업무" : "빠른 업무"} variant={isProj ? "proj" : "quick"} />
         {isProj && subsTotal > 0 && (
           <Badge label={`${subsDone}/${subsTotal} 완료`} variant={allSubDone ? "progDone" : "prog"} />
         )}
@@ -450,7 +449,7 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
                   padding: "6px 12px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer",
                   background: addType === tp ? "var(--ink)" : "var(--sf)",
                   color: addType === tp ? "#fff" : "var(--ink2)",
-                }}>{tp === "quick" ? "빠른" : "프로젝트"}</button>
+                }}>{tp === "quick" ? "빠른" : "업무"}</button>
               ))}
             </div>
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)", marginLeft: "auto" }}>우선순위</span>

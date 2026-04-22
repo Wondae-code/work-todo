@@ -64,6 +64,9 @@ body {
   background: var(--bg);
   padding-bottom: 0;
   margin-bottom: 12px;
+  /* Isolate so row content (with its own z-indexed dots/lines) cannot
+     paint above the sticky ruler during page scroll. */
+  isolation: isolate;
 }
 @media (max-width: 640px) {
   .pt-sticky-top { top: 60px; }
@@ -82,7 +85,9 @@ body {
   border-bottom: 1px solid var(--bd);
   padding-top: 12px;
   padding-bottom: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 44px;
+  /* Contain internal z-indexes so dots/lines don't bleed over sticky ruler. */
+  isolation: isolate;
 }
 .pt-timeline {
   background: var(--bg);

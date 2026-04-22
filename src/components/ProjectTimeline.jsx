@@ -377,10 +377,12 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, onSelect, scroll
   const endX = daysBetween(rangeStart, endD) * DAY_WIDTH + DAY_WIDTH / 2;
   const lineY = ROW_HEIGHT / 2;
 
-  /* ── Hover summary card (on line) + subtask popup (on dot) ──
-     Line hover opens the full subtask-list summary; dot hover opens a small
-     popup showing just that subtask's text. An 80ms hide-debounce prevents
-     flicker when the cursor crosses between adjacent hover targets. */
+  /* ── Hover popups ──
+     Line / start / end / label hover → compact project summary (title + date
+     range), anchored to the hovered element so end-dot hover shows it near
+     the end-dot (not near the start of the line). Middle subtask dots open
+     their own subtask tooltip. 80ms hide-debounce prevents flicker when the
+     cursor crosses between adjacent hover targets. */
   const lineRef = useRef(null);
   const hideTimerRef = useRef(null);
   const dotHideTimerRef = useRef(null);
@@ -390,13 +392,13 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, onSelect, scroll
   const cancelHide = () => {
     if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
   };
-  const showTip = () => {
+  const showTip = (el) => {
     if (dragRef.current) return;
     cancelHide();
-    const el = lineRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    setTip({ x: r.left, y: r.bottom + 8 });
+    const anchor = el || lineRef.current;
+    if (!anchor) return;
+    const r = anchor.getBoundingClientRect();
+    setTip({ x: r.left + r.width / 2, y: r.bottom + 8 });
   };
   const scheduleHide = () => {
     cancelHide();
@@ -404,7 +406,7 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, onSelect, scroll
   };
   useEffect(() => () => { cancelHide(); if (dotHideTimerRef.current) clearTimeout(dotHideTimerRef.current); }, []);
   const hoverHandlers = {
-    onMouseEnter: showTip,
+    onMouseEnter: (e) => showTip(e.currentTarget),
     onMouseLeave: scheduleHide,
   };
 
@@ -539,13 +541,9 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, onSelect, scroll
             filled={d.done}
             hoverHandlers={{
               onMouseEnter: (e) => {
-                showTip();
                 if (sub) showDotTip(sub, e.currentTarget);
               },
-              onMouseLeave: () => {
-                scheduleHide();
-                hideDotTip();
-              },
+              onMouseLeave: hideDotTip,
             }}
           />
         );
@@ -644,52 +642,32 @@ function SubtaskPopup({ text, done, pal, x, y }) {
   );
 }
 
-/* Project summary card (hover tooltip) — mirrors Figma's pink card style. */
+/* Compact project summary (hover tooltip) — title + date range only.
+   The full subtask list is intentionally omitted; users click the project
+   label to jump to the card where every detail is editable. */
 function SummaryCard({ project, pal, x, y }) {
   return (
     <div style={{
       position: "fixed",
       left: x,
       top: y,
-      minWidth: 200,
+      transform: "translateX(-50%)",
       maxWidth: 280,
       background: pal.main,
       color: "#fff",
       borderRadius: 10,
-      padding: "14px 18px 16px",
+      padding: "10px 14px",
       boxShadow: "0 6px 20px rgba(0,0,0,.15)",
       zIndex: 1000,
       pointerEvents: "none",
+      whiteSpace: "nowrap",
     }}>
-      <div style={{
-        fontSize: 15,
-        fontWeight: 700,
-        marginBottom: project.subs.length ? 8 : 0,
-        lineHeight: 1.3,
-      }}>
+      <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.3 }}>
         {project.text}
       </div>
-      {project.subs.length > 0 && (
-        <ul style={{
-          margin: 0,
-          paddingLeft: 18,
-          fontSize: 12,
-          lineHeight: 1.6,
-          listStyle: "disc",
-        }}>
-          {project.subs.map((s) => (
-            <li
-              key={s.sid}
-              style={{
-                textDecoration: s.done ? "line-through" : "none",
-                opacity: s.done ? 0.75 : 1,
-              }}
-            >
-              {s.text}
-            </li>
-          ))}
-        </ul>
-      )}
+      <div style={{ fontSize: 11, fontWeight: 500, opacity: 0.85, marginTop: 3 }}>
+        {fmtKo(project.start)} ~ {fmtKo(project.end)}
+      </div>
     </div>
   );
 }
