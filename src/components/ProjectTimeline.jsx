@@ -192,6 +192,28 @@ function TimelineTrack({ projects, onUpdateProject, onSelectProject }) {
     return () => ro.disconnect();
   }, []);
 
+  /* Wheel → horizontal scroll. Windows mouse wheels only emit deltaY, and
+     our container has overflow-y:hidden, so without this the page scrolls
+     vertically instead of the timeline moving left/right. When deltaY is
+     the dominant axis we redirect it to scrollLeft; native deltaX (Mac
+     trackpad horizontal swipe) is left alone so it isn't double-applied. */
+  useEffect(() => {
+    const rows = rowsScrollRef.current;
+    const ruler = rulerScrollRef.current;
+    if (!rows || !ruler) return;
+    const onWheel = (e) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      e.preventDefault();
+      rows.scrollLeft += e.deltaY;
+    };
+    rows.addEventListener("wheel", onWheel, { passive: false });
+    ruler.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      rows.removeEventListener("wheel", onWheel);
+      ruler.removeEventListener("wheel", onWheel);
+    };
+  }, []);
+
   useLayoutEffect(() => {
     if (!pendingAdjustRef.current) return;
     const rows = rowsScrollRef.current;

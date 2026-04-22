@@ -92,8 +92,12 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
-  scrollbar-width: none;           /* Firefox */
-  -ms-overflow-style: none;        /* legacy Edge / IE */
+  /* Scrollbar hidden by default, faintly shown on hover. Firefox uses
+     scrollbar-width; WebKit styles ::-webkit-scrollbar below. */
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+  -ms-overflow-style: none;
+  transition: scrollbar-color .15s ease;
   /* Break out of .pt-wrap's max-width + padding so the timeline spans the
      entire viewport. */
   position: relative;
@@ -103,7 +107,25 @@ body {
   margin-right: -50vw;
   width: 100vw;
 }
-.pt-timeline::-webkit-scrollbar { display: none; }
+.pt-timeline:hover {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+.pt-timeline::-webkit-scrollbar {
+  height: 6px;
+  background: transparent;
+}
+.pt-timeline::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+  transition: background .15s ease;
+}
+.pt-timeline:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
+}
+.pt-timeline:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
 .pt-track {
   position: relative;
   user-select: none;
