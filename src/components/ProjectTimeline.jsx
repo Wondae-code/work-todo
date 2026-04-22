@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Trash2, Check as CheckIcon, X, ChevronDown, GripVertical } from "lucide-react";
+import { Plus, Trash2, Check as CheckIcon, X, ChevronDown, GripVertical, ChevronUp } from "lucide-react";
 import AddProjectModal from "./AddProjectModal";
 
 /* ── Palette — 9 swatches from Figma "참고" (Color Input reference column).
@@ -35,6 +35,14 @@ const fmtMD = (k) => { if (!k) return ""; const [, m, d] = k.split("-"); return 
 const daysBetween = (a, b) => Math.round((b - a) / 86400000);
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 
+/* A project counts as "done" when explicitly flagged OR every subtask is
+   complete. Drives card default-collapsed state + bottom-sort order. */
+const isProjectDone = (p) => {
+  if (p.done) return true;
+  const subs = p.subs || [];
+  return subs.length > 0 && subs.every((s) => s.done);
+};
+
 /* ── Timeline constants (match Figma) ── */
 const DAY_WIDTH = 81;
 const ROW_HEIGHT = 70;
@@ -52,6 +60,24 @@ export default function ProjectTimeline({ projects, actions, loading }) {
   const [addOpen, setAddOpen] = useState(false);
   /* Refs for each ProjectCard so the timeline can scroll to a card on click. */
   const cardRefs = useRef({});
+
+  /* Floating "차트로 이동" button — shows when the timeline chart has
+     scrolled out of view. Observes .pt-sticky-top; hidden while any part
+     of the sticky ruler (or elements above it) is still on-screen. */
+  const [chartHidden, setChartHidden] = useState(false);
+  useEffect(() => {
+    const el = document.querySelector(".pt-sticky-top");
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => setChartHidden(!entry.isIntersecting),
+      { threshold: 0 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [loading]);
+  const scrollToChart = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   const scrollToCard = (pid) => {
     const el = cardRefs.current[pid];
     if (!el) return;
@@ -110,7 +136,9 @@ export default function ProjectTimeline({ projects, actions, loading }) {
           />
 
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {projects.map((p) => (
+            {[...projects]
+              .sort((a, b) => Number(isProjectDone(a)) - Number(isProjectDone(b)))
+              .map((p) => (
               <ProjectCard
                 key={p.id}
                 project={p}
@@ -127,6 +155,33 @@ export default function ProjectTimeline({ projects, actions, loading }) {
             ))}
           </div>
         </>
+      )}
+
+      {chartHidden && !loading && (
+        <button
+          onClick={scrollToChart}
+          title="차트로 이동"
+          aria-label="차트로 이동"
+          style={{
+            position: "fixed",
+            right: 24,
+            bottom: 28,
+            zIndex: 500,
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            border: "1px solid var(--bd)",
+            background: "var(--ink)",
+            color: "#fff",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 6px 18px rgba(0,0,0,.18)",
+          }}
+        >
+          <ChevronUp size={22} strokeWidth={2.5} />
+        </button>
       )}
     </div>
   );
@@ -771,7 +826,7 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
   const pal = resolvePal(project);
   const subAddRef = useRef(null);
   const [editingSid, setEditingSid] = useState(null);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => isProjectDone(project));
   const [palOpen, setPalOpen] = useState(false);
   const [dragSid, setDragSid] = useState(null);
   const [dragOverSid, setDragOverSid] = useState(null);

@@ -185,7 +185,11 @@ export default function WorkTodo({ user, onSignOut, tasks, taskActions, loading 
   const [sortAsc, setSortAsc] = useState(true);
   const [addType, setAddType] = useState("quick");
   const [addPri, setAddPri] = useState(2);
+  /* Default add-target follows the currently viewed date so navigating to
+     another day lets you add tasks to THAT day without reopening the
+     calendar. User can still override via the calendar button. */
   const [addDate, setAddDate] = useState(dk(today()));
+  useEffect(() => { setAddDate(dk(curDate)); }, [curDate]);
   const [toast, setToast] = useState({ msg: "", visible: false });
   const [calOpen, setCalOpen] = useState(false);
   const [calMode, setCalMode] = useState("edit"); // "edit" | "add" | "sub"
