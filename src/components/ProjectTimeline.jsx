@@ -201,13 +201,12 @@ function TimelineTrack({ projects, onUpdateProject, onSelectProject }) {
   const initialScrolledRef = useRef(false);
   const syncingRef = useRef(false);  /* suppress mirror-echo */
 
-  const [view, setView] = useState({ x: 0, w: 0 });
-
   const todayK = dk(tod());
   const totalWidth = rangeDays * DAY_WIDTH;
 
   /* Center today on first render. Sync BOTH containers so the ruler shows
-     the same slice as the rows on load. */
+     the same slice as the rows on load. Label positions inside each row are
+     applied imperatively (see TimelineRow), so no view state to update. */
   useLayoutEffect(() => {
     if (initialScrolledRef.current) return;
     const rows = rowsScrollRef.current;
@@ -220,18 +219,7 @@ function TimelineTrack({ projects, onUpdateProject, onSelectProject }) {
     ruler.scrollLeft = target;
     requestAnimationFrame(() => { adjustingRef.current = false; });
     initialScrolledRef.current = true;
-    setView({ x: rows.scrollLeft, w: rows.clientWidth });
   }, [rangeStart]);
-
-  useEffect(() => {
-    const el = rowsScrollRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => {
-      setView(() => ({ x: el.scrollLeft, w: el.clientWidth }));
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   /* Wheel → horizontal scroll. Windows mouse wheels only emit deltaY, and
      our container has overflow-y:hidden, so without this the page scrolls
@@ -273,7 +261,6 @@ function TimelineTrack({ projects, onUpdateProject, onSelectProject }) {
   const onRowsScroll = (e) => {
     const sl = e.target.scrollLeft;
     const cw = e.target.clientWidth;
-    setView({ x: sl, w: cw });
     if (!syncingRef.current && rulerScrollRef.current && rulerScrollRef.current.scrollLeft !== sl) {
       syncingRef.current = true;
       rulerScrollRef.current.scrollLeft = sl;
@@ -323,7 +310,6 @@ function TimelineTrack({ projects, onUpdateProject, onSelectProject }) {
               onUpdate={(upd) => onUpdateProject(p.id, upd)}
               onSelect={() => onSelectProject && onSelectProject(p.id)}
               scrollRef={rowsScrollRef}
-              view={view}
             />
           ))}
           {projects.length === 0 && (
@@ -404,7 +390,7 @@ function DateHeader({ rangeStart, rangeDays, todayK }) {
 /* ══════════════════════════════════════════════════════════
    A single project row — line + dots + label + drag handles
    ══════════════════════════════════════════════════════════ */
-function TimelineRow({ project, rangeStart, rowIndex, onUpdate, onSelect, scrollRef, view }) {
+function TimelineRow({ project, rangeStart, rowIndex, onUpdate, onSelect, scrollRef }) {
   const pal = resolvePal(project);
   const startD = pk(project.start);
   const endD = pk(project.end);
@@ -413,10 +399,52 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, onSelect, scroll
      container, so children's top is in row-local coords (not pt-body coords).
      rowIndex is kept only for debugging / future use. */
   void rowIndex;
-  void scrollRef;
   const startX = daysBetween(rangeStart, startD) * DAY_WIDTH + DAY_WIDTH / 2;
   const endX = daysBetween(rangeStart, endD) * DAY_WIDTH + DAY_WIDTH / 2;
   const lineY = ROW_HEIGHT / 2;
+
+  /* Label is centered on the VISIBLE slice of the line. Earlier we mirrored
+     the rows-container scrollLeft into a `view` React state and recomputed
+     centerX on every render — but setState is async, so during fast scroll
+     the label fell one or more frames behind the natively-scrolling track,
+     visibly jittering and "catching up". Now the label position is applied
+     imperatively in a layout effect: scroll handler reads the live
+     scrollLeft, computes centerX, and writes labelRef.current.style.left
+     in the same frame as the browser's native scroll paint. */
+  const labelRef = useRef(null);
+  useLayoutEffect(() => {
+    const container = scrollRef?.current;
+    const label = labelRef.current;
+    if (!container || !label) return;
+    const apply = () => {
+      const sl = container.scrollLeft;
+      const cw = container.clientWidth;
+      const vL = Math.max(startX, sl);
+      const vR = Math.min(endX, sl + cw);
+      const centerX = vR > vL ? (vL + vR) / 2 : (startX + endX) / 2;
+      label.style.left = `${centerX}px`;
+    };
+    apply();
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = 0; apply(); });
+    };
+    container.addEventListener("scroll", onScroll, { passive: true });
+    let ro;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => {
+        if (raf) cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => { raf = 0; apply(); });
+      });
+      ro.observe(container);
+    }
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      container.removeEventListener("scroll", onScroll);
+      if (ro) ro.disconnect();
+    };
+  }, [scrollRef, startX, endX]);
 
   /* ── Hover popups ──
      Line / start / end / label hover → compact project summary (title + date
@@ -625,39 +653,28 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, onSelect, scroll
         hoverHandlers={hoverHandlers}
       />
 
-      {/* Label — centered on the VISIBLE slice of the line (intersection of
-         the line with the current viewport). Falls back to full-line center
-         until `view` is measured. */}
-      {(() => {
-        const viewLeft = view?.w ? view.x : startX;
-        const viewRight = view?.w ? view.x + view.w : endX;
-        const vL = Math.max(startX, viewLeft);
-        const vR = Math.min(endX, viewRight);
-        const visible = vR > vL;
-        const centerX = visible ? (vL + vR) / 2 : (startX + endX) / 2;
-        return (
-          <div
-            {...hoverHandlers}
-            onClick={() => onSelect?.()}
-            style={{
-              position: "absolute",
-              left: centerX,
-              transform: "translateX(-50%)",
-              top: lineY + DOT_SIZE / 2 + 6,
-              textAlign: "center",
-              fontSize: 14,
-              fontWeight: 500,
-              color: project.done ? "var(--ink3)" : "var(--ink)",
-              textDecoration: project.done ? "line-through" : "none",
-              whiteSpace: "nowrap",
-              pointerEvents: "auto",
-              cursor: "pointer",
-            }}
-          >
-            {project.text}
-          </div>
-        );
-      })()}
+      {/* Label — left is set imperatively in the useLayoutEffect above. */}
+      <div
+        ref={labelRef}
+        {...hoverHandlers}
+        onClick={() => onSelect?.()}
+        style={{
+          position: "absolute",
+          left: 0,
+          transform: "translateX(-50%)",
+          top: lineY + DOT_SIZE / 2 + 6,
+          textAlign: "center",
+          fontSize: 14,
+          fontWeight: 500,
+          color: project.done ? "var(--ink3)" : "var(--ink)",
+          textDecoration: project.done ? "line-through" : "none",
+          whiteSpace: "nowrap",
+          pointerEvents: "auto",
+          cursor: "pointer",
+        }}
+      >
+        {project.text}
+      </div>
 
       {tip && createPortal(
         <SummaryCard project={project} pal={pal} x={tip.x} y={tip.y} />,
