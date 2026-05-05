@@ -97,7 +97,7 @@ export default function ProjectTimeline({ projects, actions, loading }) {
           <div className="pt-sticky-top">
             <div style={{
               display: "flex", alignItems: "baseline", justifyContent: "space-between",
-              marginBottom: 12, paddingTop: 16,
+              marginBottom: 12,
             }}>
               <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5 }}>프로젝트</div>
               <button
@@ -487,16 +487,22 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, onSelect, scroll
     dotHideTimerRef.current = setTimeout(() => setDotTip(null), 80);
   };
 
-  /* Intermediate dots — only subtasks WITH a deadline show up on the timeline.
-     Position = subtask.deadline on the shared day axis.
-     A dot is filled when the subtask is done; hollow otherwise. */
+  /* Intermediate dots — date priority:
+       1) done_at present → filled dot at the completion date
+       2) else deadline present → hollow dot at the target date
+       3) neither → no dot
+     Completion date is the source of truth so the chart reflects WHEN the
+     work actually happened, not just what was originally planned. */
   const midDots = project.subs
-    .filter((s) => s.deadline)
-    .map((s) => ({
-      sid: s.sid,
-      x: daysBetween(rangeStart, pk(s.deadline)) * DAY_WIDTH + DAY_WIDTH / 2,
-      done: s.done,
-    }));
+    .filter((s) => s.done_at || s.deadline)
+    .map((s) => {
+      const dateK = s.done_at || s.deadline;
+      return {
+        sid: s.sid,
+        x: daysBetween(rangeStart, pk(dateK)) * DAY_WIDTH + DAY_WIDTH / 2,
+        done: !!s.done_at,
+      };
+    });
 
   /* ── Drag state ──
      mode: 'start' | 'end' | 'move'
