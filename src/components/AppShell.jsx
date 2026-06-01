@@ -183,6 +183,7 @@ export default function AppShell({ user, onSignOut, tasks, taskActions, tasksLoa
               }}><X size={20} /></button>
             </div>
             <textarea
+              spellCheck={false}
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               placeholder="JSON 문자열을 붙여넣기..."

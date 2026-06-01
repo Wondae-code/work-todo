@@ -12,8 +12,8 @@ const PAL = {
   peach:     { main: "#F2A65A", text: "#A55A18", label: "피치" },
   green:     { main: "#85C38E", text: "#3D7A4A", label: "그린" },
   sky:       { main: "#64D9F3", text: "#57B7CD", label: "스카이" },
-  magenta:   { main: "#D8A0EE", text: "#8E4BA6", label: "마젠타" },
-  purple:    { main: "#9B8EC7", text: "#5E549A", label: "퍼플" },
+  magenta:   { main: "#FF3F7F", text: "#C71F5A", label: "핑크" },
+  purple:    { main: "#008BFF", text: "#0066CC", label: "블루" },
   lavender:  { main: "#B19CE4", text: "#6B57A0", label: "라벤더" },
   slate:     { main: "#5E5E58", text: "#3A3A35", label: "슬레이트" },
 };
@@ -580,29 +580,12 @@ function TimelineRow({ project, rangeStart, rowIndex, onUpdate, onSelect, scroll
 
   return (
     <div className="pt-row" style={{ height: ROW_HEIGHT, position: "relative" }}>
-      {/* Invisible hover hitbox — the line itself is only 2px tall, which is
-         way too thin to hover comfortably. This zone extends vertically
-         ±20px around the line and laterally past both endpoints so the
-         tooltip opens reliably. Sits BEHIND line/dots (zIndex 1) so their
-         own mouseDown handlers still run. */}
-      <div
-        {...hoverHandlers}
-        style={{
-          position: "absolute",
-          left: Math.min(startX, endX) - 12,
-          width: Math.abs(endX - startX) + 24,
-          top: lineY - 20,
-          height: 40,
-          zIndex: 1,
-        }}
-      />
-
-      {/* Line */}
+      {/* Line — hover popup intentionally removed here (제목/checkpoint hover만
+         팝업 유지). 드래그(move)와 클릭(select)은 그대로. */}
       <div
         ref={lineRef}
         onMouseDown={(e) => beginDrag("move", e)}
         onClick={() => { if (!movedRef.current) onSelect?.(); }}
-        {...hoverHandlers}
         style={{
           position: "absolute",
           left: startX, width: endX - startX,
@@ -907,6 +890,7 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
         </button>
         <input
           type="text"
+          spellCheck={false}
           defaultValue={project.text}
           onBlur={(e) => {
             const v = e.target.value.trim();
@@ -1129,6 +1113,7 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
               {editingSid === s.sid ? (
                 <input
                   autoFocus
+                  spellCheck={false}
                   defaultValue={s.text}
                   onBlur={(e) => {
                     const v = e.target.value.trim();
@@ -1140,7 +1125,7 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
                     if (e.key === "Escape") setEditingSid(null);
                   }}
                   style={{
-                    width: "100%", fontFamily: "inherit", fontSize: 13,
+                    width: "100%", fontFamily: "inherit", fontSize: 14,
                     border: "1px solid var(--bd2)", borderRadius: 6,
                     padding: "3px 6px", outline: "none",
                   }}
@@ -1149,7 +1134,7 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
                 <span
                   onClick={() => setEditingSid(s.sid)}
                   style={{
-                    fontSize: 13,
+                    fontSize: 14,
                     color: s.done ? "var(--ink3)" : "var(--ink)",
                     textDecoration: s.done ? "line-through" : "none",
                     cursor: "text",
@@ -1204,6 +1189,7 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
         <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
           <input
             ref={subAddRef}
+            spellCheck={false}
             placeholder="하위 항목 추가..."
             onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && submitAddSub()}
             style={{

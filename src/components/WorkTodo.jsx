@@ -81,6 +81,7 @@ function SubList({ subs, taskId, onToggle, onEdit, onDel, onAdd, onOpenSubCal })
           <div style={{ flex: 1, minWidth: 0 }}>
             <textarea
               rows={1}
+              spellCheck={false}
               value={s.text}
               onChange={(e) => onEdit(taskId, s.sid, { text: e.target.value })}
               onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
@@ -107,7 +108,7 @@ function SubList({ subs, taskId, onToggle, onEdit, onDel, onAdd, onOpenSubCal })
         </div>
       ))}
       <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-        <input ref={ref} placeholder="단계 추가..." onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && doAdd()} style={subInputS} />
+        <input ref={ref} spellCheck={false} placeholder="단계 추가..." onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && doAdd()} style={subInputS} />
         <button onClick={doAdd} style={{ ...subBtnS, display: "flex", alignItems: "center", justifyContent: "center" }}><Plus size={14} /></button>
       </div>
     </div>
@@ -122,6 +123,9 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
   const subsDone = (t.subs || []).filter((s) => s.done).length;
   const subsTotal = (t.subs || []).length;
   const allSubDone = subsTotal > 0 && subsDone === subsTotal;
+  /* 카드 우측(삭제 버튼 앞)에 표시할 날짜 라벨 — M/D (요일) */
+  const cd = parseKey(t.date_key);
+  const dateLabel = `${cd.getMonth() + 1}/${cd.getDate()} (${DAYS[cd.getDay()]})`;
 
   return (
     <div className="task-card" style={{
@@ -133,6 +137,7 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
         <div style={{ paddingTop: 1, flexShrink: 0 }}><Check checked={t.done} onClick={() => onToggle(t.id)} /></div>
         <textarea
           rows={1}
+          spellCheck={false}
           value={t.text}
           onChange={(e) => onUpdate(t.id, { text: e.target.value })}
           onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
@@ -144,6 +149,10 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
             ...(t.done ? { color: "var(--ink2)" } : {}),
           }}
         />
+        <span style={{
+          flexShrink: 0, marginTop: 4, fontSize: 12, fontWeight: 600,
+          color: "var(--ink3)", whiteSpace: "nowrap",
+        }}>{dateLabel}</span>
         <button onClick={() => onDel(t.id)} style={{
           flexShrink: 0, border: "1px solid var(--red-bg)", background: "var(--red-bg)", borderRadius: 8,
           padding: "3px 8px", color: "var(--red)",
@@ -443,7 +452,7 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
           </div>
           {/* Row 2: input, add button */}
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input ref={addRef} placeholder="할 일 입력..." onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && handleAdd()} style={{
+            <input ref={addRef} spellCheck={false} placeholder="할 일 입력..." onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && handleAdd()} style={{
               flex: 1, border: "1px solid var(--bd)", borderRadius: 8,
               padding: "8px 12px", fontSize: 15, fontFamily: "inherit", outline: "none",
             }} />

@@ -69,6 +69,23 @@ body {
      paint above the sticky ruler during page scroll. */
   isolation: isolate;
 }
+/* Full-viewport-width opaque backing. The header content is only .pt-wrap-wide
+   (max 1100px), but the ruler + rows below break out to 100vw. Without this,
+   project lines/dots scrolling up behind the sticky header bleed over its
+   transparent side gutters ("date ruler 상단으로 라인차트 보임"). z-index:-1 keeps
+   it behind the title/ruler, but the whole sticky context still paints above
+   the scrolling rows. */
+.pt-sticky-top::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  margin-left: -50vw;
+  background: var(--bg);
+  z-index: -1;
+}
 @media (max-width: 640px) {
   .pt-sticky-top { top: 60px; padding-top: 28px; }
 }
@@ -132,6 +149,14 @@ body {
 .pt-timeline:hover::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.4);
 }
+/* The date ruler mirrors the rows' horizontal scroll programmatically, so it
+   must never show its own scrollbar — only the rows scrollbar (below) shows.
+   Fixes the "스크롤바 이중으로 뜸" report. */
+.pt-timeline-ruler,
+.pt-timeline-ruler:hover {
+  scrollbar-width: none;
+}
+.pt-timeline-ruler::-webkit-scrollbar { display: none; }
 .pt-track {
   position: relative;
   user-select: none;

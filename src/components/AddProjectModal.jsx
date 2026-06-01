@@ -65,6 +65,7 @@ export default function AddProjectModal({ show, onClose, onSubmit }) {
           <input
             ref={nameRef}
             type="text"
+            spellCheck={false}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && submit()}
