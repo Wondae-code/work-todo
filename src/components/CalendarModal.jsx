@@ -14,6 +14,7 @@ export default function CalendarModal({
   calMonth,
   setCalYear,
   setCalMonth,
+  markedDates = new Set(),
 }) {
   const todayK = useMemo(() => dk(new Date()), []);
 
@@ -73,11 +74,13 @@ export default function CalendarModal({
           {cells.map((c, i) => {
             const isToday = c.key === todayK;
             const isSel = c.key === selectedKey;
+            const marked = markedDates.has(c.key);
             return (
               <div
                 key={i}
                 onClick={() => onPick(c.key)}
                 style={{
+                  position: "relative",
                   width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
                   borderRadius: "50%", fontSize: 13, fontWeight: 500, cursor: "pointer", margin: "0 auto",
                   color: isSel ? "#fff" : c.other ? "var(--ink3)" : "var(--ink)",
@@ -86,6 +89,13 @@ export default function CalendarModal({
                 }}
               >
                 {c.d}
+                {marked && (
+                  <span style={{
+                    position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)",
+                    width: 4, height: 4, borderRadius: "50%",
+                    background: isSel ? "#fff" : "var(--ink2)",
+                  }} />
+                )}
               </div>
             );
           })}

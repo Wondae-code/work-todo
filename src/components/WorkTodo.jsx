@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Check as CheckIcon, X, Plus, ChevronLeft, ChevronRight, ChevronUp, Calendar, Trash2 } from "lucide-react";
 import CalendarModal from "./CalendarModal";
 
@@ -221,6 +221,12 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
   }, []);
 
   /* ── Derived state ── */
+  /* 캘린더에 "예정업무 있음" 도트를 찍기 위해 미완료(done=false) task의 날짜를 모은다. */
+  const markedDates = useMemo(() => {
+    const s = new Set();
+    tasks.forEach((t) => { if (!t.done) s.add(t.date_key); });
+    return s;
+  }, [tasks]);
   const key = dk(curDate);
   const td = today();
   const diff = diffDays(curDate, td);
@@ -452,6 +458,13 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
         {/* Task list */}
         {!visible.length && <Empty text="이 날짜에 할 일이 없어요" />}
 
+        {filter !== "project" && quickActive.length > 0 && (
+          <>
+            <SectionHeader color="var(--green)" label="빠른 업무" />
+            {quickActive.map((t) => <Card key={t.id} task={t} {...cardProps} />)}
+          </>
+        )}
+
         {filter !== "quick" && projActive.length > 0 && (
           <>
             <SectionHeader color="var(--blue)" label="업무" right={
@@ -461,13 +474,6 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
               }}>{sortAsc ? "우선순위 ↑" : "우선순위 ↓"}</div>
             } />
             {projActive.map((t) => <Card key={t.id} task={t} {...cardProps} />)}
-          </>
-        )}
-
-        {filter !== "project" && quickActive.length > 0 && (
-          <>
-            <SectionHeader color="var(--green)" label="빠른 업무" />
-            {quickActive.map((t) => <Card key={t.id} task={t} {...cardProps} />)}
           </>
         )}
 
@@ -494,7 +500,7 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
       <CalendarModal
         show={calOpen} onClose={() => setCalOpen(false)} selectedKey={selectedKey}
         onPick={pickDate} calYear={calYear} calMonth={calMonth}
-        setCalYear={setCalYear} setCalMonth={setCalMonth}
+        setCalYear={setCalYear} setCalMonth={setCalMonth} markedDates={markedDates}
       />
 
       {/* Floating "맨 위로" button — same design as the project tab. */}
