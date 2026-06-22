@@ -1125,7 +1125,7 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
                     if (e.key === "Escape") setEditingSid(null);
                   }}
                   style={{
-                    width: "100%", fontFamily: "inherit", fontSize: 14,
+                    width: "100%", fontFamily: "inherit", fontSize: 15,
                     border: "1px solid var(--bd2)", borderRadius: 6,
                     padding: "3px 6px", outline: "none",
                   }}
@@ -1134,7 +1134,7 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
                 <span
                   onClick={() => setEditingSid(s.sid)}
                   style={{
-                    fontSize: 14,
+                    fontSize: 15,
                     color: s.done ? "var(--ink3)" : "var(--ink)",
                     textDecoration: s.done ? "line-through" : "none",
                     cursor: "text",
