@@ -136,15 +136,20 @@ function SubList({ subs, taskId, isMobile, onToggle, onEdit, onDel, onAdd, onOpe
 
 /* ── Card ── */
 
-function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggleSub, onEditSub, onDelSub, onAddSub, onOpenSubCal }) {
+function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggleSub, onEditSub, onDelSub, onAddSub, onOpenSubCal, onOpenTaskDoneCal }) {
   const isProj = t.type === "project";
   const priV = t.priority === 1 ? "p1" : t.priority === 2 ? "p2" : "p3";
   const subsDone = (t.subs || []).filter((s) => s.done).length;
   const subsTotal = (t.subs || []).length;
   const allSubDone = subsTotal > 0 && subsDone === subsTotal;
-  /* 카드 우측(삭제 버튼 앞)에 표시할 날짜 라벨 — M/D (요일) */
+  /* 카드 우측(삭제 버튼 앞) 날짜 라벨 (기획 코멘트 반영).
+     - 미완료: 등록(예정)일을 "M/D (요일)" 로 표시
+     - 완료:   실제 완료일(done_at)을 "M/D (요일) 완료" 로 표시, 클릭 시 수정.
+       done_at 이 없는 과거/가져온 완료 항목은 등록일로 폴백. */
   const cd = parseKey(t.date_key);
-  const dateLabel = `${cd.getMonth() + 1}/${cd.getDate()} (${DAYS[cd.getDay()]})`;
+  const dateText = `${cd.getMonth() + 1}/${cd.getDate()} (${DAYS[cd.getDay()]})`;
+  const doneCd = parseKey(t.done_at || t.date_key);
+  const doneText = `${doneCd.getMonth() + 1}/${doneCd.getDate()} (${DAYS[doneCd.getDay()]})`;
 
   return (
     <div className="task-card" style={{
@@ -168,10 +173,20 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
             ...(t.done ? { color: "var(--ink2)" } : {}),
           }}
         />
-        <span style={{
-          flexShrink: 0, marginTop: 4, fontSize: 12, fontWeight: 600,
-          color: "var(--ink3)", whiteSpace: "nowrap",
-        }}>{dateLabel}</span>
+        {t.done ? (
+          <button onClick={() => onOpenTaskDoneCal(t.id, t.done_at)} title="완료일 수정" style={{
+            flexShrink: 0, marginTop: 4, background: "none", border: "none", cursor: "pointer",
+            padding: 0, fontFamily: "inherit", fontSize: 12, fontWeight: 700, color: "var(--green)",
+            whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 3,
+          }}>
+            <Calendar size={11} />{doneText} 완료
+          </button>
+        ) : (
+          <span style={{
+            flexShrink: 0, marginTop: 4, fontSize: 12, fontWeight: 600,
+            color: "var(--ink3)", whiteSpace: "nowrap",
+          }}>{dateText}</span>
+        )}
         <button onClick={() => onDel(t.id)} style={{
           flexShrink: 0, border: "1px solid var(--red-bg)", background: "var(--red-bg)", borderRadius: 8,
           padding: "3px 8px", color: "var(--red)",
@@ -272,7 +287,10 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
   /* ── Handlers ── */
   const handleToggle = (id) => {
     const t = tasks.find((x) => x.id === id);
-    if (t) updateTask(id, { done: !t.done });
+    if (t) {
+      const newDone = !t.done;
+      updateTask(id, { done: newDone, done_at: newDone ? dk(today()) : null });
+    }
   };
 
   const handleAdd = () => {
@@ -321,6 +339,16 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
     setCalOpen(true);
   };
 
+  /* 메인 task 완료일(done_at) 수정용 캘린더 */
+  const openTaskDoneCal = (id, doneAt) => {
+    const d = doneAt ? parseKey(doneAt) : today();
+    setCalMode("taskdone");
+    setCalTaskId(id);
+    setCalYear(d.getFullYear());
+    setCalMonth(d.getMonth());
+    setCalOpen(true);
+  };
+
   /* Open calendar for date-navigation: picking a date jumps the view there. */
   const openNavCal = () => {
     setCalMode("nav");
@@ -341,6 +369,11 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
       setCalOpen(false);
       return;
     }
+    if (calMode === "taskdone") {
+      updateTask(calTaskId, { done_at: k });
+      setCalOpen(false);
+      return;
+    }
     if (calMode === "nav") {
       setCurDate(parseKey(k));
       setCalOpen(false);
@@ -358,6 +391,7 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
 
   const selectedKey = calMode === "add" ? addDate
     : calMode === "sub" ? (tasks.find((x) => x.id === calTaskId)?.subs?.find((s) => s.sid === calSubId)?.done_at || "")
+    : calMode === "taskdone" ? (tasks.find((x) => x.id === calTaskId)?.done_at || "")
     : calMode === "nav" ? dk(curDate)
     : (calTaskId != null ? tasks.find((x) => x.id === calTaskId)?.date_key : "");
 
@@ -365,6 +399,7 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
     isMobile, onToggle: handleToggle, onUpdate: updateTask, onDel: deleteTask,
     onOpenCal: openCal, onToggleSub: handleToggleSub, onEditSub: updateSub,
     onDelSub: deleteSub, onAddSub: addSub, onOpenSubCal: openSubCal,
+    onOpenTaskDoneCal: openTaskDoneCal,
   };
 
   if (loading) {

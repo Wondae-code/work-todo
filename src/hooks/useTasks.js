@@ -17,9 +17,9 @@ const todayKey = () => dk(new Date());
 function defaultTasks() {
   const k = todayKey();
   return [
-    { id: -1, text: "헤라실드 광고지 디자인", done: false, priority: 1, type: "project", subs: [], date_key: k },
-    { id: -2, text: "벨라비타 주력제안서 작성", done: false, priority: 2, type: "project", subs: [], date_key: k },
-    { id: -3, text: "상품개별제안서 폼 작성", done: false, priority: 2, type: "quick", subs: [], date_key: k },
+    { id: -1, text: "헤라실드 광고지 디자인", done: false, priority: 1, type: "project", subs: [], date_key: k, done_at: null },
+    { id: -2, text: "벨라비타 주력제안서 작성", done: false, priority: 2, type: "project", subs: [], date_key: k, done_at: null },
+    { id: -3, text: "상품개별제안서 폼 작성", done: false, priority: 2, type: "quick", subs: [], date_key: k, done_at: null },
   ];
 }
 
@@ -33,6 +33,7 @@ function rowToTask(row, subtasks = []) {
     priority: row.priority,
     type: row.type,
     date_key: row.date_key,
+    done_at: row.done_at || null,
     subs: subtasks
       .filter((s) => s.task_id === row.id)
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -93,7 +94,7 @@ export function useTasks(userId) {
         // 로컬 전용
         setTasks((prev) => [
           ...prev,
-          { id: Date.now(), text, done: false, priority, type, date_key: key, subs: [] },
+          { id: Date.now(), text, done: false, priority, type, date_key: key, done_at: null, subs: [] },
         ]);
         return;
       }
@@ -225,6 +226,7 @@ export function useTasks(userId) {
       priority: t.priority,
       type: t.type,
       date_key: t.date_key,
+      done_at: t.done_at || null,
       subs: (t.subs || []).map((s) => ({ text: s.text, done: s.done, done_at: s.done_at || null })),
     }));
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -271,6 +273,7 @@ export function useTasks(userId) {
         // 이전 버전 호환: dateKey -> date_key
         const date_key = item.date_key || item.dateKey || todayKey();
         const done = !!item.done;
+        const done_at = item.done_at || null;
         const subs = item.subs || [];
 
         if (!userId) {
@@ -278,7 +281,7 @@ export function useTasks(userId) {
           setTasks((prev) => [
             ...prev,
             {
-              id: taskId, text, done, priority, type, date_key,
+              id: taskId, text, done, priority, type, date_key, done_at,
               subs: subs.map((s, i) => ({ sid: taskId * 100 + i, text: s.text, done: !!s.done, done_at: s.done_at || null })),
             },
           ]);
@@ -288,7 +291,7 @@ export function useTasks(userId) {
 
         const { data, error } = await supabase
           .from("tasks")
-          .insert({ user_id: userId, text, done, priority, type, date_key })
+          .insert({ user_id: userId, text, done, priority, type, date_key, done_at })
           .select()
           .single();
 
