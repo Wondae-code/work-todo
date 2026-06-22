@@ -61,10 +61,14 @@ function Toast({ msg, visible }) {
 
 /* ── SubList ── */
 
-function SubList({ subs, taskId, onToggle, onEdit, onDel, onAdd, onOpenSubCal }) {
+function SubList({ subs, taskId, isMobile, onToggle, onEdit, onDel, onAdd, onOpenSubCal }) {
   const ref = useRef();
   const doAdd = () => {
-    if (ref.current?.value.trim()) { onAdd(taskId, ref.current.value.trim()); ref.current.value = ""; }
+    if (ref.current?.value.trim()) {
+      onAdd(taskId, ref.current.value.trim());
+      ref.current.value = "";
+      ref.current.style.height = "auto";
+    }
   };
   const fmtDoneAt = (d) => {
     if (!d) return "";
@@ -107,8 +111,23 @@ function SubList({ subs, taskId, onToggle, onEdit, onDel, onAdd, onOpenSubCal })
           }}><X size={14} /></button>
         </div>
       ))}
-      <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-        <input ref={ref} spellCheck={false} placeholder="단계 추가..." onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && doAdd()} style={subInputS} />
+      <div style={{ display: "flex", gap: 6, marginTop: 4, alignItems: "flex-start" }}>
+        <textarea
+          ref={ref}
+          rows={1}
+          spellCheck={false}
+          placeholder="단계 추가..."
+          onKeyDown={(e) => {
+            /* Desktop: Enter submits, Shift+Enter newline. Mobile has no Shift,
+               so Enter must insert a newline — submit via the + button. */
+            if (!isMobile && e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              doAdd();
+            }
+          }}
+          onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+          style={{ ...subInputS, resize: "none", overflow: "auto", lineHeight: 1.5, maxHeight: 120 }}
+        />
         <button onClick={doAdd} style={{ ...subBtnS, display: "flex", alignItems: "center", justifyContent: "center" }}><Plus size={14} /></button>
       </div>
     </div>
@@ -177,7 +196,7 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
         }}><Calendar size={12} style={{ marginRight: 4 }} />날짜 수정</button>
       </div>
       {isProj && (
-        <SubList subs={t.subs || []} taskId={t.id}
+        <SubList subs={t.subs || []} taskId={t.id} isMobile={isMobile}
           onToggle={onToggleSub} onEdit={onEditSub} onDel={onDelSub} onAdd={onAddSub} onOpenSubCal={onOpenSubCal} />
       )}
     </div>
@@ -261,6 +280,7 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
     if (!text) return;
     addTask({ text, priority: addPri, type: addType, date_key: addDate });
     addRef.current.value = "";
+    addRef.current.style.height = "auto";
   };
 
   const handleToggleSub = (tid, sid) => {
@@ -451,11 +471,27 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
             }}><Calendar size={13} /></button>
           </div>
           {/* Row 2: input, add button */}
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input ref={addRef} spellCheck={false} placeholder="할 일 입력..." onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && handleAdd()} style={{
-              flex: 1, border: "1px solid var(--bd)", borderRadius: 8,
-              padding: "8px 12px", fontSize: 15, fontFamily: "inherit", outline: "none",
-            }} />
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <textarea
+              ref={addRef}
+              rows={1}
+              spellCheck={false}
+              placeholder="할 일 입력...  (Shift+Enter 줄바꿈)"
+              onKeyDown={(e) => {
+                /* Desktop: Enter submits, Shift+Enter newline. Mobile has no Shift,
+                   so Enter must insert a newline — submit via the + button. */
+                if (!isMobile && e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  handleAdd();
+                }
+              }}
+              onInput={(e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+              style={{
+                flex: 1, border: "1px solid var(--bd)", borderRadius: 8,
+                padding: "8px 12px", fontSize: 15, fontFamily: "inherit", outline: "none",
+                resize: "none", overflow: "auto", lineHeight: 1.5, maxHeight: 160,
+              }}
+            />
             <button onClick={handleAdd} style={{
               background: "var(--ink)", color: "#fff", border: "none", borderRadius: 10,
               width: 36, height: 36, cursor: "pointer",
