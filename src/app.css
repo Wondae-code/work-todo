@@ -107,6 +107,15 @@ body {
   /* Contain internal z-indexes so dots/lines don't bleed over sticky ruler. */
   isolation: isolate;
 }
+/* 알림 설정 롤링 휠 — 스크롤바 없이 스냅 스크롤만 보이게 */
+.alarm-wheel {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.alarm-wheel::-webkit-scrollbar {
+  display: none;
+}
+
 .pt-timeline {
   background: var(--bg);
   margin-top: 0;

@@ -34,6 +34,7 @@ function rowToTask(row, subtasks = []) {
     type: row.type,
     date_key: row.date_key,
     done_at: row.done_at || null,
+    alarm_hour: row.alarm_hour ?? null,
     subs: subtasks
       .filter((s) => s.task_id === row.id)
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -81,8 +82,9 @@ export function useTasks(userId) {
   /* ── localStorage 동기화 (비로그인) ── */
 
   useEffect(() => {
-    if (!userId) localStorage.setItem(LOCAL_KEY, JSON.stringify(tasks));
-  }, [tasks, userId]);
+    // 로딩 완료 전에 초기값 []로 저장소를 덮어쓰지 않도록 가드
+    if (!userId && !loading) localStorage.setItem(LOCAL_KEY, JSON.stringify(tasks));
+  }, [tasks, userId, loading]);
 
   /* ── CRUD ── */
 
@@ -227,6 +229,7 @@ export function useTasks(userId) {
       type: t.type,
       date_key: t.date_key,
       done_at: t.done_at || null,
+      alarm_hour: t.alarm_hour ?? null,
       subs: (t.subs || []).map((s) => ({ text: s.text, done: s.done, done_at: s.done_at || null })),
     }));
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -274,6 +277,7 @@ export function useTasks(userId) {
         const date_key = item.date_key || item.dateKey || todayKey();
         const done = !!item.done;
         const done_at = item.done_at || null;
+        const alarm_hour = item.alarm_hour ?? null;
         const subs = item.subs || [];
 
         if (!userId) {
@@ -281,7 +285,7 @@ export function useTasks(userId) {
           setTasks((prev) => [
             ...prev,
             {
-              id: taskId, text, done, priority, type, date_key, done_at,
+              id: taskId, text, done, priority, type, date_key, done_at, alarm_hour,
               subs: subs.map((s, i) => ({ sid: taskId * 100 + i, text: s.text, done: !!s.done, done_at: s.done_at || null })),
             },
           ]);
@@ -291,7 +295,7 @@ export function useTasks(userId) {
 
         const { data, error } = await supabase
           .from("tasks")
-          .insert({ user_id: userId, text, done, priority, type, date_key, done_at })
+          .insert({ user_id: userId, text, done, priority, type, date_key, done_at, alarm_hour })
           .select()
           .single();
 

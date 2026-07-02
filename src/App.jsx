@@ -4,6 +4,7 @@ import { useTasks } from "./hooks/useTasks";
 import Auth from "./components/Auth";
 import AppShell from "./components/AppShell";
 import ProjectTimeline from "./components/ProjectTimeline";
+import WorkTodo from "./components/WorkTodo";
 import { createMockProjects } from "./test-fixtures/mockProjects";
 import "./app.css";
 
@@ -58,14 +59,20 @@ function TimelineTestPage() {
 
 export default function App() {
   /* Test-mode shortcut — reads at module init so navigation requires reload. */
-  const isTimelineTest =
-    new URLSearchParams(window.location.search).get("test") === "timeline";
+  const testMode = new URLSearchParams(window.location.search).get("test");
+  const isTimelineTest = testMode === "timeline";
+  const isTodoTest = testMode === "todo";
 
   const { user, loading: authLoading, signInWithMagicLink, signUp, signIn, signOut } = useAuth();
   const { tasks, loading: tasksLoading, ...taskActions } = useTasks(user?.id ?? null);
 
   if (isTimelineTest) {
     return <TimelineTestPage />;
+  }
+
+  /* Auth 우회 테스트 모드 — localStorage 기반으로 업무할일 탭만 렌더 */
+  if (isTodoTest) {
+    return <WorkTodo user={null} tasks={tasks} taskActions={taskActions} loading={tasksLoading} />;
   }
 
   // 인증 로딩 중

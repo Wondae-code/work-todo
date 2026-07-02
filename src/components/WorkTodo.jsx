@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Check as CheckIcon, X, Plus, ChevronLeft, ChevronRight, ChevronUp, Calendar, Trash2 } from "lucide-react";
+import { Check as CheckIcon, X, Plus, ChevronLeft, ChevronRight, ChevronUp, Calendar, Trash2, Bell } from "lucide-react";
 import CalendarModal from "./CalendarModal";
+import AlarmModal from "./AlarmModal";
+import { useAlarms } from "../hooks/useAlarms";
 
 const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const dk = (d) =>
@@ -9,6 +11,8 @@ const parseKey = (k) => { const p = k.split("-"); return new Date(+p[0], +p[1] -
 const diffDays = (a, b) => Math.round((a - b) / 864e5);
 const fmtDate = (d) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS[d.getDay()]})`;
 const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+/* 알림 시각 라벨 — 0~23시 → "AM 9시" 형식 */
+const fmtAlarm = (h) => `${h < 12 ? "AM" : "PM"} ${h % 12 === 0 ? 12 : h % 12}시`;
 
 /* ── Primitives ── */
 
@@ -136,7 +140,7 @@ function SubList({ subs, taskId, isMobile, onToggle, onEdit, onDel, onAdd, onOpe
 
 /* ── Card ── */
 
-function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggleSub, onEditSub, onDelSub, onAddSub, onOpenSubCal, onOpenTaskDoneCal }) {
+function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onOpenAlarm, onToggleSub, onEditSub, onDelSub, onAddSub, onOpenSubCal, onOpenTaskDoneCal }) {
   const isProj = t.type === "project";
   const priV = t.priority === 1 ? "p1" : t.priority === 2 ? "p2" : "p3";
   const subsDone = (t.subs || []).filter((s) => s.done).length;
@@ -209,6 +213,14 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onToggl
           padding: "3px 10px", fontSize: 11, fontWeight: 600, color: "var(--ink2)",
           cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center",
         }}><Calendar size={12} style={{ marginRight: 4 }} />날짜 수정</button>
+        <button onClick={() => onOpenAlarm(t.id)} title="알림 설정" style={{
+          border: `1px solid ${t.alarm_hour != null ? "var(--amber-bg)" : "var(--bd)"}`,
+          background: t.alarm_hour != null ? "var(--amber-bg)" : "var(--sf)",
+          borderRadius: 8,
+          padding: "3px 10px", fontSize: 11, fontWeight: 600,
+          color: t.alarm_hour != null ? "var(--amber)" : "var(--ink2)",
+          cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center",
+        }}><Bell size={12} style={{ marginRight: t.alarm_hour != null ? 4 : 0 }} />{t.alarm_hour != null ? fmtAlarm(t.alarm_hour) : ""}</button>
       </div>
       {isProj && (
         <SubList subs={t.subs || []} taskId={t.id} isMobile={isMobile}
@@ -242,6 +254,9 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
   const [calYear, setCalYear] = useState(today().getFullYear());
   const [calMonth, setCalMonth] = useState(today().getMonth());
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const [alarmOpen, setAlarmOpen] = useState(false);
+  const [alarmTaskId, setAlarmTaskId] = useState(null);
+  const [firedAlarms, setFiredAlarms] = useState([]); // 화면에 띄울 알림 팝업 목록
   const addRef = useRef();
   const toastTimer = useRef();
 
@@ -349,6 +364,43 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
     setCalOpen(true);
   };
 
+  /* ── 알림 ── */
+  const openAlarm = (id) => {
+    setAlarmTaskId(id);
+    setAlarmOpen(true);
+  };
+
+  const pickAlarm = (hour) => {
+    if (alarmTaskId == null) return;
+    updateTask(alarmTaskId, { alarm_hour: hour });
+    setAlarmOpen(false);
+    if (hour == null) {
+      flash("알림을 해제했어요");
+      return;
+    }
+    flash(`${fmtAlarm(hour)}에 알려드릴게요`);
+    // 사용자 제스처 시점에 브라우저 알림 권한 요청
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  };
+
+  /* 설정 시각 도달 시: 인앱 팝업 + (권한 있으면) OS 알림.
+     Notification API는 브라우저를 통해 OS 알림 센터로 전달된다 —
+     탭이 백그라운드여도 뜨지만, 브라우저가 완전히 종료되면 오지 않는다. */
+  useAlarms(tasks, useCallback((t) => {
+    setFiredAlarms((prev) => [...prev, { id: t.id, text: t.text, hour: t.alarm_hour }]);
+    if ("Notification" in window && Notification.permission === "granted") {
+      const n = new Notification("업무 알림", {
+        body: `${fmtAlarm(t.alarm_hour)} · ${t.text}`,
+        tag: `work-todo-alarm-${t.id}-${t.date_key}`, // 같은 알림 중복 배너 방지
+      });
+      n.onclick = () => { window.focus(); n.close(); };
+    }
+  }, []));
+
+  const dismissAlarm = (id) => setFiredAlarms((prev) => prev.filter((a) => a.id !== id));
+
   /* Open calendar for date-navigation: picking a date jumps the view there. */
   const openNavCal = () => {
     setCalMode("nav");
@@ -397,7 +449,7 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
 
   const cardProps = {
     isMobile, onToggle: handleToggle, onUpdate: updateTask, onDel: deleteTask,
-    onOpenCal: openCal, onToggleSub: handleToggleSub, onEditSub: updateSub,
+    onOpenCal: openCal, onOpenAlarm: openAlarm, onToggleSub: handleToggleSub, onEditSub: updateSub,
     onDelSub: deleteSub, onAddSub: addSub, onOpenSubCal: openSubCal,
     onOpenTaskDoneCal: openTaskDoneCal,
   };
@@ -576,7 +628,46 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
         )}
       </div>
 
+      {/* 알림 도착 팝업 (상단 중앙 스택) */}
+      {firedAlarms.length > 0 && (
+        <div style={{
+          position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)",
+          zIndex: 1001, display: "flex", flexDirection: "column", gap: 8,
+          width: "min(400px, calc(100vw - 32px))",
+        }}>
+          {firedAlarms.map((a) => (
+            <div key={a.id} style={{
+              background: "var(--sf)", border: "1px solid var(--bd)", borderRadius: 14,
+              padding: "14px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.18)",
+              display: "flex", alignItems: "flex-start", gap: 10,
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+                background: "var(--amber-bg)", color: "var(--amber)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}><Bell size={16} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink3)", marginBottom: 2 }}>
+                  {fmtAlarm(a.hour)} 업무 알림
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 600, wordBreak: "break-word" }}>{a.text}</div>
+              </div>
+              <button onClick={() => dismissAlarm(a.id)} style={{
+                background: "none", border: "none", cursor: "pointer", color: "var(--ink3)",
+                padding: 2, display: "flex", alignItems: "center", flexShrink: 0,
+              }}><X size={16} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <Toast msg={toast.msg} visible={toast.visible} />
+      <AlarmModal
+        show={alarmOpen}
+        onClose={() => setAlarmOpen(false)}
+        alarmHour={tasks.find((x) => x.id === alarmTaskId)?.alarm_hour ?? null}
+        onPick={pickAlarm}
+      />
       <CalendarModal
         show={calOpen} onClose={() => setCalOpen(false)} selectedKey={selectedKey}
         onPick={pickDate} calYear={calYear} calMonth={calMonth}

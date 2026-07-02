@@ -12,6 +12,7 @@ create table public.tasks (
   priority    smallint default 2 check (priority between 1 and 3),
   type        text default 'quick' check (type in ('project', 'quick')),
   date_key    text not null,                          -- 'YYYY-MM-DD'
+  alarm_hour  smallint check (alarm_hour between 0 and 23),  -- 알림 시각 (0~23시, null = 알림 없음)
   created_at  timestamptz default now()
 );
 
@@ -95,4 +96,8 @@ create policy "project_subs_owner" on public.project_subs
 -- 아래 ALTER 문만 SQL Editor에서 실행:
 --
 --   alter table public.project_subs add column deadline text;
+--
+-- 알림 기능(alarm_hour) 추가 시:
+--
+--   alter table public.tasks add column alarm_hour smallint check (alarm_hour between 0 and 23);
 -- ============================================
