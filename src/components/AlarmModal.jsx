@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, BellOff, Bell } from "lucide-react";
+import { X, BellOff, Bell, BellRing, ChevronDown, Check } from "lucide-react";
 
 /**
  * 알림 시간 설정 모달 — iOS 스타일 롤링 휠 (스펙 참고 이미지의 롤링패널 방식)
@@ -84,9 +84,9 @@ const AMPM_ITEMS = [
 ];
 const HOUR_ITEMS = Array.from({ length: 12 }, (_, i) => ({ v: i + 1, label: `${i + 1}시` }));
 
-/* 이벤트 시각 기준 미리 알림 오프셋 (분) */
+/* 이벤트 시각 기준 미리 알림 오프셋 (분) — Google Calendar/iOS 캘린더의 알림 목록 구성 */
 const OFFSET_ITEMS = [
-  { v: 0, label: "정각" },
+  { v: 0, label: "이벤트 시간" },
   { v: 5, label: "5분 전" },
   { v: 10, label: "10분 전" },
   { v: 15, label: "15분 전" },
@@ -99,6 +99,7 @@ export default function AlarmModal({ show, onClose, alarmHour, alarmOffset = 0, 
   const [ampm, setAmpm] = useState("AM");
   const [hour12, setHour12] = useState(9);
   const [offset, setOffset] = useState(0);
+  const [offsetOpen, setOffsetOpen] = useState(false);
 
   useEffect(() => {
     if (!show) return;
@@ -106,6 +107,7 @@ export default function AlarmModal({ show, onClose, alarmHour, alarmOffset = 0, 
     setAmpm(alarmHour == null || alarmHour < 12 ? "AM" : "PM");
     setHour12(h % 12 === 0 ? 12 : h % 12);
     setOffset(alarmOffset || 0);
+    setOffsetOpen(false);
   }, [show, alarmHour, alarmOffset]);
 
   if (!show) return null;
@@ -127,18 +129,43 @@ export default function AlarmModal({ show, onClose, alarmHour, alarmOffset = 0, 
           <Wheel items={HOUR_ITEMS} value={hour12} onChange={setHour12} />
         </div>
 
-        {/* 미리 알림 오프셋 */}
-        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink3)", marginBottom: 8 }}>미리 알림</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, marginBottom: 16 }}>
-          {OFFSET_ITEMS.map((o) => (
-            <button key={o.v} onClick={() => setOffset(o.v)} style={{
-              padding: "8px 0", borderRadius: 10, fontSize: 12, fontWeight: 600,
-              cursor: "pointer", fontFamily: "inherit",
-              border: `1px solid ${offset === o.v ? "var(--ink)" : "var(--bd)"}`,
-              background: offset === o.v ? "var(--ink)" : "var(--sf)",
-              color: offset === o.v ? "#fff" : "var(--ink2)",
-            }}>{o.label}</button>
-          ))}
+        {/* 미리 알림 — 접힌 한 줄 행, 펼치면 체크마크 목록 (Google Calendar/iOS 캘린더 패턴) */}
+        <div style={{ border: "1px solid var(--bd)", borderRadius: 12, marginBottom: 16, overflow: "hidden" }}>
+          <button onClick={() => setOffsetOpen((v) => !v)} style={{
+            display: "flex", alignItems: "center", gap: 8, width: "100%",
+            padding: "11px 14px", border: "none", background: "var(--sf)",
+            cursor: "pointer", fontFamily: "inherit",
+          }}>
+            <BellRing size={14} style={{ color: "var(--ink3)", flexShrink: 0 }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)" }}>미리 알림</span>
+            <span style={{
+              marginLeft: "auto", fontSize: 13, fontWeight: 700, color: "var(--ink)",
+              display: "flex", alignItems: "center", gap: 4,
+            }}>
+              {OFFSET_ITEMS.find((o) => o.v === offset)?.label}
+              <ChevronDown size={14} style={{
+                color: "var(--ink3)",
+                transform: offsetOpen ? "rotate(180deg)" : "none",
+                transition: "transform .15s",
+              }} />
+            </span>
+          </button>
+          {offsetOpen && (
+            <div style={{ borderTop: "1px solid var(--bd)" }}>
+              {OFFSET_ITEMS.map((o) => (
+                <button key={o.v} onClick={() => { setOffset(o.v); setOffsetOpen(false); }} style={{
+                  display: "flex", alignItems: "center", width: "100%",
+                  padding: "10px 14px", border: "none", cursor: "pointer", fontFamily: "inherit",
+                  background: offset === o.v ? "var(--sf2)" : "var(--sf)",
+                  fontSize: 13, fontWeight: offset === o.v ? 700 : 500,
+                  color: offset === o.v ? "var(--ink)" : "var(--ink2)",
+                }}>
+                  {o.label}
+                  {offset === o.v && <Check size={15} style={{ marginLeft: "auto" }} />}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Actions */}
