@@ -9,6 +9,9 @@ import { useEffect, useRef, useCallback } from "react";
 
 const FIRED_KEY = "work_alarm_fired_v1";
 
+/* 알림 시각 라벨 — 0~23시 → "AM 9시" 형식 */
+export const fmtAlarm = (h) => `${h < 12 ? "AM" : "PM"} ${h % 12 === 0 ? 12 : h % 12}시`;
+
 const dk = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
