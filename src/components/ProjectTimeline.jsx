@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Trash2, Check as CheckIcon, X, ChevronDown, GripVertical, ChevronUp } from "lucide-react";
+import { Plus, Trash2, Check as CheckIcon, X, ChevronDown, GripVertical, ChevronUp, Bell } from "lucide-react";
 import AddProjectModal from "./AddProjectModal";
+import AlarmModal from "./AlarmModal";
+import { fmtAlarm } from "../hooks/useAlarms";
 
 /* ── Palette — 9 swatches from Figma "참고" (Color Input reference column).
    `main` drives line/dot/accent; `text` is a darker readable variant for
@@ -841,6 +843,7 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
   const [palOpen, setPalOpen] = useState(false);
   const [dragSid, setDragSid] = useState(null);
   const [dragOverSid, setDragOverSid] = useState(null);
+  const [alarmSid, setAlarmSid] = useState(null); // 알림 설정 모달이 열린 하위 항목
 
   const doneCount = project.subs.filter((s) => s.done).length;
   const total = project.subs.length;
@@ -858,6 +861,7 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
   /* Column widths aligned with Figma "After" (목표 52 / 완료 52 / delete 17). */
   const COL_TARGET = 52;
   const COL_DONE = 52;
+  const COL_ALARM = 52;
   const COL_DEL = 17;
 
   return (
@@ -1036,6 +1040,8 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
           <div style={{ width: COL_TARGET, textAlign: "center" }}>목표 일자</div>
           <div style={{ width: 8 }} />
           <div style={{ width: COL_DONE, textAlign: "center" }}>완료 일자</div>
+          <div style={{ width: 8 }} />
+          <div style={{ width: COL_ALARM, textAlign: "center" }}>알림</div>
           <div style={{ width: COL_DEL }} />
         </div>
       )}
@@ -1169,6 +1175,27 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
                 tone={s.done ? "muted" : "light"}
               />
             </div>
+            <div style={{ width: 8 }} />
+            {/* 알림 (목표 일자에 발화) */}
+            <div style={{ width: COL_ALARM, display: "flex", justifyContent: "center" }}>
+              <button
+                onClick={() => setAlarmSid(s.sid)}
+                title={s.deadline ? "알림 설정" : "목표 일자를 설정하면 알림이 울려요"}
+                style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 3,
+                  height: 20, minWidth: 50, padding: "0 6px",
+                  fontSize: 11, fontWeight: 600, fontFamily: "inherit",
+                  color: s.alarm_hour != null ? "var(--amber)" : "var(--ink3)",
+                  background: s.alarm_hour != null ? "var(--amber-bg)" : "var(--sf)",
+                  border: `1px solid ${s.alarm_hour != null ? "var(--amber-bg)" : "var(--bd)"}`,
+                  borderRadius: 10, cursor: "pointer", whiteSpace: "nowrap",
+                  opacity: s.deadline || s.alarm_hour != null ? 1 : 0.55,
+                }}
+              >
+                <Bell size={10} />
+                {s.alarm_hour != null ? fmtAlarm(s.alarm_hour) : ""}
+              </button>
+            </div>
             <div style={{ width: COL_DEL, display: "flex", justifyContent: "center" }}>
               <button
                 className="sub-del-btn"
@@ -1212,6 +1239,20 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
         </div>
       </div>
       )}
+
+      {/* 하위 항목 알림 시각 설정 (목표 일자에 발화) */}
+      <AlarmModal
+        show={alarmSid != null}
+        onClose={() => setAlarmSid(null)}
+        alarmHour={project.subs.find((s) => s.sid === alarmSid)?.alarm_hour ?? null}
+        onPick={(hour) => {
+          onUpdateSub(alarmSid, { alarm_hour: hour });
+          setAlarmSid(null);
+          if (hour != null && "Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+          }
+        }}
+      />
     </div>
   );
 }

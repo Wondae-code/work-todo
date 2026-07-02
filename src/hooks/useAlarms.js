@@ -1,9 +1,11 @@
 import { useEffect, useRef, useCallback } from "react";
 
 /**
- * 알림 스케줄러 훅
- * - 30초 간격으로 오늘 날짜의 미완료 + alarm_hour 설정된 task를 검사
- * - 설정 시각이 지나면 onFire(task) 호출 (같은 task/날짜/시각당 1회)
+ * 알림 스케줄러 훅 (업무·프로젝트 공용)
+ * - items: { key, text, hour, dateKey, done } 목록
+ *   key: 발화 식별자(중복 방지), hour: 0~23, dateKey: 'YYYY-MM-DD'
+ * - 30초 간격 + items 변경 즉시, 오늘 날짜의 미완료 항목 중
+ *   설정 시각이 지난 것을 onFire(item)로 알림 (같은 key당 1회)
  * - 발화 기록은 localStorage에 저장해 새로고침해도 중복 알림 방지
  */
 
@@ -34,9 +36,9 @@ function saveFired(map) {
   localStorage.setItem(FIRED_KEY, JSON.stringify(pruned));
 }
 
-export function useAlarms(tasks, onFire) {
-  const tasksRef = useRef(tasks);
-  tasksRef.current = tasks;
+export function useAlarms(items, onFire) {
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
   const onFireRef = useRef(onFire);
   onFireRef.current = onFire;
 
@@ -46,15 +48,14 @@ export function useAlarms(tasks, onFire) {
     const fired = loadFired();
     let changed = false;
 
-    for (const t of tasksRef.current) {
-      if (t.done || t.alarm_hour == null) continue;
-      if (t.date_key !== todayK) continue;
-      if (now.getHours() < t.alarm_hour) continue;
-      const key = `${t.id}:${t.date_key}:${t.alarm_hour}`;
-      if (fired[key]) continue;
-      fired[key] = t.date_key;
+    for (const it of itemsRef.current) {
+      if (it.done || it.hour == null || !it.dateKey) continue;
+      if (it.dateKey !== todayK) continue;
+      if (now.getHours() < it.hour) continue;
+      if (fired[it.key]) continue;
+      fired[it.key] = it.dateKey;
       changed = true;
-      onFireRef.current(t);
+      onFireRef.current(it);
     }
 
     if (changed) saveFired(fired);
@@ -66,8 +67,8 @@ export function useAlarms(tasks, onFire) {
     return () => clearInterval(iv);
   }, [check]);
 
-  // tasks 로드/변경 즉시 체크 — 앱을 늦게 열어도 지난 알림이 바로 뜬다 (fired 기록으로 중복 방지)
+  // items 로드/변경 즉시 체크 — 앱을 늦게 열어도 지난 알림이 바로 뜬다 (fired 기록으로 중복 방지)
   useEffect(() => {
     check();
-  }, [tasks, check]);
+  }, [items, check]);
 }

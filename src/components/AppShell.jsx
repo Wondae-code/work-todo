@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ClipboardList,
   LayoutDashboard,
@@ -14,19 +14,9 @@ import WorkTodo from "./WorkTodo";
 import ProjectTimeline from "./ProjectTimeline";
 import { useProjects } from "../hooks/useProjects";
 import { useAlarms, fmtAlarm } from "../hooks/useAlarms";
+import { useAlarmHistory } from "../hooks/useAlarmHistory";
 
 const TAB_STORAGE_KEY = "app-shell-active-tab";
-const NOTIF_HISTORY_KEY = "work_alarm_history_v1";
-
-/* ── 알림함 이력 (localStorage, 최근 50건) ── */
-function loadNotifHistory() {
-  try {
-    const raw = localStorage.getItem(NOTIF_HISTORY_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
 
 /* 알림 발생 시각 라벨 — "방금 전" / "n분 전" / "n시간 전" / "M/D" */
 function fmtAgo(at) {
@@ -79,44 +69,56 @@ export default function AppShell({ user, onSignOut, tasks, taskActions, tasksLoa
   const toastTimer = useRef();
 
   /* ── 알림함 + 발화 엔진 (탭 어디서든 동작하도록 셸 레벨에 둔다) ── */
-  const [notifs, setNotifs] = useState(loadNotifHistory);
+  const { notifs, loaded: notifsLoaded, addNotif, markAllRead, clearAll } = useAlarmHistory(user?.id ?? null);
+  const notifsRef = useRef(notifs);
+  notifsRef.current = notifs;
   const [notifOpen, setNotifOpen] = useState(false);
   const [popups, setPopups] = useState([]); // 화면 상단에 잠깐 뜨는 팝업
 
-  useEffect(() => {
-    localStorage.setItem(NOTIF_HISTORY_KEY, JSON.stringify(notifs));
-  }, [notifs]);
+  /* 알림 후보: 업무(등록일) + 프로젝트 하위 항목(목표 일자).
+     이력 로드 전에는 빈 목록 — 다른 기기에서 이미 발화한 알림의 중복 팝업 방지. */
+  const alarmItems = useMemo(() => {
+    if (!notifsLoaded) return [];
+    return [
+      ...tasks.map((t) => ({
+        key: `${t.id}:${t.date_key}:${t.alarm_hour}`,
+        text: t.text, hour: t.alarm_hour, dateKey: t.date_key, done: t.done,
+      })),
+      ...projects.flatMap((p) => (p.subs || []).map((s) => ({
+        key: `proj:${s.sid}:${s.deadline}:${s.alarm_hour}`,
+        text: `${p.text} · ${s.text}`, hour: s.alarm_hour, dateKey: s.deadline, done: s.done,
+      }))),
+    ];
+  }, [tasks, projects, notifsLoaded]);
 
   /* 설정 시각 도달 시: 알림함 적재 + 인앱 팝업 + (권한 있으면) OS 알림.
      Notification API는 브라우저를 통해 OS 알림 센터로 전달된다 —
      탭이 백그라운드여도 뜨지만, 브라우저가 완전히 종료되면 오지 않는다. */
-  useAlarms(tasks, useCallback((t) => {
-    const item = {
-      id: `${t.id}:${t.date_key}:${t.alarm_hour}`,
-      text: t.text, hour: t.alarm_hour, at: Date.now(), read: false,
-    };
-    setNotifs((prev) => [item, ...prev.filter((n) => n.id !== item.id)].slice(0, 50));
-    setPopups((prev) => [...prev, item]);
+  useAlarms(alarmItems, useCallback((it) => {
+    // 다른 기기에서 이미 발화·기록된 알림이면 재알림 없이 넘어간다
+    if (notifsRef.current.some((n) => n.key === it.key)) return;
+    addNotif(it);
+    setPopups((prev) => [...prev, { ...it, at: Date.now() }]);
     if ("Notification" in window && Notification.permission === "granted") {
       const n = new Notification("업무 알림", {
-        body: `${fmtAlarm(t.alarm_hour)} · ${t.text}`,
-        tag: `work-todo-alarm-${item.id}`, // 같은 알림 중복 배너 방지
+        body: `${fmtAlarm(it.hour)} · ${it.text}`,
+        tag: `work-todo-alarm-${it.key}`, // 같은 알림 중복 배너 방지
       });
       n.onclick = () => { window.focus(); n.close(); };
     }
-  }, []));
+  }, [addNotif]));
 
   const unreadCount = notifs.filter((n) => !n.read).length;
 
   const toggleNotifs = () => {
     setNotifOpen((v) => {
       // 열 때 모두 읽음 처리
-      if (!v) setNotifs((prev) => prev.map((n) => (n.read ? n : { ...n, read: true })));
+      if (!v) markAllRead();
       return !v;
     });
   };
 
-  const dismissPopup = (id) => setPopups((prev) => prev.filter((p) => p.id !== id));
+  const dismissPopup = (key) => setPopups((prev) => prev.filter((p) => p.key !== key));
 
   useEffect(() => {
     window.localStorage.setItem(TAB_STORAGE_KEY, tab);
@@ -210,7 +212,7 @@ export default function AppShell({ user, onSignOut, tasks, taskActions, tasksLoa
                   }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>알림</span>
                     {notifs.length > 0 && (
-                      <button onClick={() => setNotifs([])} style={{
+                      <button onClick={clearAll} style={{
                         display: "flex", alignItems: "center", gap: 4,
                         background: "none", border: "none", cursor: "pointer",
                         fontSize: 12, fontWeight: 600, color: "var(--ink3)", fontFamily: "inherit",
@@ -224,7 +226,7 @@ export default function AppShell({ user, onSignOut, tasks, taskActions, tasksLoa
                       </div>
                     )}
                     {notifs.map((n) => (
-                      <div key={n.id} onClick={() => { switchTab("todo"); setNotifOpen(false); }} style={{
+                      <div key={n.key} onClick={() => { switchTab(n.key.startsWith("proj:") ? "gantt" : "todo"); setNotifOpen(false); }} style={{
                         display: "flex", alignItems: "flex-start", gap: 10,
                         padding: "12px 16px", cursor: "pointer",
                         borderBottom: "1px solid var(--bd)",
@@ -307,7 +309,7 @@ export default function AppShell({ user, onSignOut, tasks, taskActions, tasksLoa
           width: "min(400px, calc(100vw - 32px))",
         }}>
           {popups.map((a) => (
-            <div key={a.id} onClick={() => { switchTab("todo"); dismissPopup(a.id); }} style={{
+            <div key={a.key} onClick={() => { switchTab(a.key.startsWith("proj:") ? "gantt" : "todo"); dismissPopup(a.key); }} style={{
               background: "var(--sf)", border: "1px solid var(--bd)", borderRadius: 14,
               padding: "14px 16px", boxShadow: "0 12px 40px rgba(0,0,0,.18)",
               display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer",
@@ -323,7 +325,7 @@ export default function AppShell({ user, onSignOut, tasks, taskActions, tasksLoa
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 600, wordBreak: "break-word" }}>{a.text}</div>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); dismissPopup(a.id); }} style={{
+              <button onClick={(e) => { e.stopPropagation(); dismissPopup(a.key); }} style={{
                 background: "none", border: "none", cursor: "pointer", color: "var(--ink3)",
                 padding: 2, display: "flex", alignItems: "center", flexShrink: 0,
               }}><X size={16} /></button>

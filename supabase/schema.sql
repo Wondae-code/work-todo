@@ -48,8 +48,21 @@ create table public.project_subs (
   done        boolean default false,
   done_at     text,                                     -- 'YYYY-MM-DD' 완료 날짜
   deadline    text,                                     -- 'YYYY-MM-DD' 마감일 (타임라인 dot 위치)
+  alarm_hour  smallint check (alarm_hour between 0 and 23),  -- 마감일 알림 시각 (null = 알림 없음)
   sort_order  smallint default 0,
   created_at  timestamptz default now()
+);
+
+-- Alarm History 테이블 (알림함 이력 — 기기 간 동기화)
+create table public.alarm_history (
+  id          bigint generated always as identity primary key,
+  user_id     uuid references auth.users(id) on delete cascade not null,
+  fired_key   text not null,                            -- '{ref}:{date}:{hour}' 발화 식별자 (중복 방지)
+  text        text not null,
+  alarm_hour  smallint,
+  read        boolean default false,
+  created_at  timestamptz default now(),
+  unique (user_id, fired_key)
 );
 
 -- 인덱스
@@ -57,6 +70,7 @@ create index idx_tasks_user_date    on public.tasks (user_id, date_key);
 create index idx_subtasks_task      on public.subtasks (task_id);
 create index idx_projects_user      on public.projects (user_id);
 create index idx_project_subs_proj  on public.project_subs (project_id);
+create index idx_alarm_history_user on public.alarm_history (user_id, created_at desc);
 
 -- ============================================
 -- Row Level Security (유저별 데이터 격리)
@@ -66,6 +80,13 @@ alter table public.tasks enable row level security;
 alter table public.subtasks enable row level security;
 alter table public.projects enable row level security;
 alter table public.project_subs enable row level security;
+alter table public.alarm_history enable row level security;
+
+-- Alarm History: 본인 데이터만 CRUD
+create policy "alarm_history_owner" on public.alarm_history
+  for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 -- Tasks: 본인 데이터만 CRUD
 create policy "tasks_owner" on public.tasks
@@ -100,4 +121,23 @@ create policy "project_subs_owner" on public.project_subs
 -- 알림 기능(alarm_hour) 추가 시:
 --
 --   alter table public.tasks add column alarm_hour smallint check (alarm_hour between 0 and 23);
+--
+-- 프로젝트 알림 + 알림함 동기화 추가 시:
+--
+--   alter table public.project_subs add column alarm_hour smallint check (alarm_hour between 0 and 23);
+--
+--   create table public.alarm_history (
+--     id          bigint generated always as identity primary key,
+--     user_id     uuid references auth.users(id) on delete cascade not null,
+--     fired_key   text not null,
+--     text        text not null,
+--     alarm_hour  smallint,
+--     read        boolean default false,
+--     created_at  timestamptz default now(),
+--     unique (user_id, fired_key)
+--   );
+--   create index idx_alarm_history_user on public.alarm_history (user_id, created_at desc);
+--   alter table public.alarm_history enable row level security;
+--   create policy "alarm_history_owner" on public.alarm_history
+--     for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 -- ============================================
