@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Check as CheckIcon, X, Plus, ChevronLeft, ChevronRight, ChevronUp, Calendar, Trash2, Bell } from "lucide-react";
 import CalendarModal from "./CalendarModal";
 import AlarmModal from "./AlarmModal";
-import { fmtAlarm } from "../hooks/useAlarms";
+import { fmtAlarm, fmtAlarmFull } from "../hooks/useAlarms";
 
 const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const dk = (d) =>
@@ -218,7 +218,7 @@ function Card({ task: t, isMobile, onToggle, onUpdate, onDel, onOpenCal, onOpenA
           padding: "3px 10px", fontSize: 11, fontWeight: 600,
           color: t.alarm_hour != null ? "var(--amber)" : "var(--ink2)",
           cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center",
-        }}><Bell size={12} style={{ marginRight: t.alarm_hour != null ? 4 : 0 }} />{t.alarm_hour != null ? fmtAlarm(t.alarm_hour) : ""}</button>
+        }}><Bell size={12} style={{ marginRight: t.alarm_hour != null ? 4 : 0 }} />{t.alarm_hour != null ? fmtAlarmFull(t.alarm_hour, t.alarm_offset) : ""}</button>
       </div>
       {isProj && (
         <SubList subs={t.subs || []} taskId={t.id} isMobile={isMobile}
@@ -367,15 +367,15 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
     setAlarmOpen(true);
   };
 
-  const pickAlarm = (hour) => {
+  const pickAlarm = (hour, offsetMin = 0) => {
     if (alarmTaskId == null) return;
-    updateTask(alarmTaskId, { alarm_hour: hour });
+    updateTask(alarmTaskId, { alarm_hour: hour, alarm_offset: hour == null ? 0 : offsetMin });
     setAlarmOpen(false);
     if (hour == null) {
       flash("알림을 해제했어요");
       return;
     }
-    flash(`${fmtAlarm(hour)}에 알려드릴게요`);
+    flash(`${fmtAlarmFull(hour, offsetMin)}에 알려드릴게요`);
     // 사용자 제스처 시점에 브라우저 알림 권한 요청
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
@@ -614,6 +614,7 @@ export default function WorkTodo({ user, tasks, taskActions, loading }) {
         show={alarmOpen}
         onClose={() => setAlarmOpen(false)}
         alarmHour={tasks.find((x) => x.id === alarmTaskId)?.alarm_hour ?? null}
+        alarmOffset={tasks.find((x) => x.id === alarmTaskId)?.alarm_offset ?? 0}
         onPick={pickAlarm}
       />
       <CalendarModal

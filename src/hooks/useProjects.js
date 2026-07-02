@@ -27,6 +27,7 @@ function rowToProject(row, subs = []) {
         done_at: s.done_at || null,
         deadline: s.deadline || null,
         alarm_hour: s.alarm_hour ?? null,
+        alarm_offset: s.alarm_offset ?? 0,
       })),
   };
 }
@@ -170,6 +171,7 @@ export function useProjects(userId) {
                       done_at: data.done_at || null,
                       deadline: data.deadline || null,
                       alarm_hour: data.alarm_hour ?? null,
+                      alarm_offset: data.alarm_offset ?? 0,
                     },
                   ],
                 }

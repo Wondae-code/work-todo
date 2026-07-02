@@ -4,8 +4,9 @@ import { X, BellOff, Bell } from "lucide-react";
 /**
  * 알림 시간 설정 모달 — iOS 스타일 롤링 휠 (스펙 참고 이미지의 롤링패널 방식)
  * - 오전/오후 + 1~12시 두 개의 스크롤 휠, 1시간 단위, 디폴트 AM 9시
+ * - 이벤트 시각 몇 분 전에 알릴지 오프셋 선택 (정각~1시간 전)
  * - "확인"으로 적용, "알림 없음"으로 해제
- * - onPick(hour24 | null)
+ * - onPick(hour24 | null, offsetMin)
  */
 
 const ITEM_H = 40;   // 휠 한 칸 높이
@@ -15,12 +16,14 @@ function Wheel({ items, value, onChange, width = 104 }) {
   const ref = useRef();
   const timer = useRef();
 
-  /* 열릴 때 선택값이 중앙에 오도록 스크롤 */
+  /* 선택값이 중앙에 오도록 스크롤 — 마운트 시(기존 설정 복원)와
+     외부 value 변경(항목 클릭 등) 모두 따라간다. 이미 그 자리면 건너뜀. */
   useEffect(() => {
     const idx = items.findIndex((it) => it.v === value);
-    if (ref.current && idx >= 0) ref.current.scrollTop = idx * ITEM_H;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!ref.current || idx < 0) return;
+    const target = idx * ITEM_H;
+    if (Math.abs(ref.current.scrollTop - target) > 1) ref.current.scrollTop = target;
+  }, [value, items]);
 
   const onScroll = () => {
     clearTimeout(timer.current);
@@ -81,17 +84,29 @@ const AMPM_ITEMS = [
 ];
 const HOUR_ITEMS = Array.from({ length: 12 }, (_, i) => ({ v: i + 1, label: `${i + 1}시` }));
 
-export default function AlarmModal({ show, onClose, alarmHour, onPick }) {
-  // alarmHour: 0~23 또는 null (미설정 시 디폴트 AM 9시)
+/* 이벤트 시각 기준 미리 알림 오프셋 (분) */
+const OFFSET_ITEMS = [
+  { v: 0, label: "정각" },
+  { v: 5, label: "5분 전" },
+  { v: 10, label: "10분 전" },
+  { v: 15, label: "15분 전" },
+  { v: 30, label: "30분 전" },
+  { v: 60, label: "1시간 전" },
+];
+
+export default function AlarmModal({ show, onClose, alarmHour, alarmOffset = 0, onPick }) {
+  // alarmHour: 0~23 또는 null (미설정 시 디폴트 AM 9시), alarmOffset: 분 단위 미리 알림
   const [ampm, setAmpm] = useState("AM");
   const [hour12, setHour12] = useState(9);
+  const [offset, setOffset] = useState(0);
 
   useEffect(() => {
     if (!show) return;
     const h = alarmHour == null ? 9 : alarmHour;
     setAmpm(alarmHour == null || alarmHour < 12 ? "AM" : "PM");
     setHour12(h % 12 === 0 ? 12 : h % 12);
-  }, [show, alarmHour]);
+    setOffset(alarmOffset || 0);
+  }, [show, alarmHour, alarmOffset]);
 
   if (!show) return null;
 
@@ -107,25 +122,39 @@ export default function AlarmModal({ show, onClose, alarmHour, onPick }) {
         </div>
 
         {/* Rolling wheels */}
-        <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 14 }}>
           <Wheel items={AMPM_ITEMS} value={ampm} onChange={setAmpm} />
           <Wheel items={HOUR_ITEMS} value={hour12} onChange={setHour12} />
         </div>
 
+        {/* 미리 알림 오프셋 */}
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink3)", marginBottom: 8 }}>미리 알림</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, marginBottom: 16 }}>
+          {OFFSET_ITEMS.map((o) => (
+            <button key={o.v} onClick={() => setOffset(o.v)} style={{
+              padding: "8px 0", borderRadius: 10, fontSize: 12, fontWeight: 600,
+              cursor: "pointer", fontFamily: "inherit",
+              border: `1px solid ${offset === o.v ? "var(--ink)" : "var(--bd)"}`,
+              background: offset === o.v ? "var(--ink)" : "var(--sf)",
+              color: offset === o.v ? "#fff" : "var(--ink2)",
+            }}>{o.label}</button>
+          ))}
+        </div>
+
         {/* Actions */}
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => onPick(null)} style={{
+          <button onClick={() => onPick(null, 0)} style={{
             flex: 1, padding: "11px 0", border: "1px solid var(--bd)", borderRadius: 10,
             fontSize: 13, fontWeight: 600, background: "var(--sf)", cursor: "pointer",
             color: "var(--ink3)", fontFamily: "inherit",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
           }}><BellOff size={14} />알림 없음</button>
-          <button onClick={() => onPick(to24())} style={{
+          <button onClick={() => onPick(to24(), offset)} style={{
             flex: 1.4, padding: "11px 0", border: "none", borderRadius: 10,
             fontSize: 14, fontWeight: 700, background: "var(--ink)", color: "#fff",
             cursor: "pointer", fontFamily: "inherit",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-          }}><Bell size={14} />{ampm === "AM" ? "오전" : "오후"} {hour12}시 알림</button>
+          }}><Bell size={14} />{ampm === "AM" ? "오전" : "오후"} {hour12}시{offset ? ` ${OFFSET_ITEMS.find((o) => o.v === offset)?.label}` : ""} 알림</button>
         </div>
       </div>
     </div>

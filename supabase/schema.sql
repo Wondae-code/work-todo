@@ -13,6 +13,7 @@ create table public.tasks (
   type        text default 'quick' check (type in ('project', 'quick')),
   date_key    text not null,                          -- 'YYYY-MM-DD'
   alarm_hour  smallint check (alarm_hour between 0 and 23),  -- 알림 시각 (0~23시, null = 알림 없음)
+  alarm_offset smallint default 0,                    -- 이벤트 몇 분 전 알림 (0 = 정각)
   created_at  timestamptz default now()
 );
 
@@ -49,6 +50,7 @@ create table public.project_subs (
   done_at     text,                                     -- 'YYYY-MM-DD' 완료 날짜
   deadline    text,                                     -- 'YYYY-MM-DD' 마감일 (타임라인 dot 위치)
   alarm_hour  smallint check (alarm_hour between 0 and 23),  -- 마감일 알림 시각 (null = 알림 없음)
+  alarm_offset smallint default 0,                      -- 이벤트 몇 분 전 알림 (0 = 정각)
   sort_order  smallint default 0,
   created_at  timestamptz default now()
 );
@@ -140,4 +142,9 @@ create policy "project_subs_owner" on public.project_subs
 --   alter table public.alarm_history enable row level security;
 --   create policy "alarm_history_owner" on public.alarm_history
 --     for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+--
+-- 미리 알림 오프셋(N분 전) 추가 시:
+--
+--   alter table public.tasks add column alarm_offset smallint default 0;
+--   alter table public.project_subs add column alarm_offset smallint default 0;
 -- ============================================

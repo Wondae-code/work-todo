@@ -13,7 +13,7 @@ import {
 import WorkTodo from "./WorkTodo";
 import ProjectTimeline from "./ProjectTimeline";
 import { useProjects } from "../hooks/useProjects";
-import { useAlarms, fmtAlarm } from "../hooks/useAlarms";
+import { useAlarms, fmtAlarm, fmtAlarmFull } from "../hooks/useAlarms";
 import { useAlarmHistory } from "../hooks/useAlarmHistory";
 
 const TAB_STORAGE_KEY = "app-shell-active-tab";
@@ -79,14 +79,18 @@ export default function AppShell({ user, onSignOut, tasks, taskActions, tasksLoa
      이력 로드 전에는 빈 목록 — 다른 기기에서 이미 발화한 알림의 중복 팝업 방지. */
   const alarmItems = useMemo(() => {
     if (!notifsLoaded) return [];
+    // 오프셋이 있으면 key에 포함 — 오프셋 변경 시 새 알림으로 취급 (0이면 기존 key 형식 유지)
+    const off = (m) => (m ? `:-${m}` : "");
     return [
       ...tasks.map((t) => ({
-        key: `${t.id}:${t.date_key}:${t.alarm_hour}`,
-        text: t.text, hour: t.alarm_hour, dateKey: t.date_key, done: t.done,
+        key: `${t.id}:${t.date_key}:${t.alarm_hour}${off(t.alarm_offset)}`,
+        text: t.text, hour: t.alarm_hour, offsetMin: t.alarm_offset || 0,
+        dateKey: t.date_key, done: t.done,
       })),
       ...projects.flatMap((p) => (p.subs || []).map((s) => ({
-        key: `proj:${s.sid}:${s.deadline}:${s.alarm_hour}`,
-        text: `${p.text} · ${s.text}`, hour: s.alarm_hour, dateKey: s.deadline, done: s.done,
+        key: `proj:${s.sid}:${s.deadline}:${s.alarm_hour}${off(s.alarm_offset)}`,
+        text: `${p.text} · ${s.text}`, hour: s.alarm_hour, offsetMin: s.alarm_offset || 0,
+        dateKey: s.deadline, done: s.done,
       }))),
     ];
   }, [tasks, projects, notifsLoaded]);
@@ -101,7 +105,7 @@ export default function AppShell({ user, onSignOut, tasks, taskActions, tasksLoa
     setPopups((prev) => [...prev, { ...it, at: Date.now() }]);
     if ("Notification" in window && Notification.permission === "granted") {
       const n = new Notification("업무 알림", {
-        body: `${fmtAlarm(it.hour)} · ${it.text}`,
+        body: `${fmtAlarmFull(it.hour, it.offsetMin)} · ${it.text}`,
         tag: `work-todo-alarm-${it.key}`, // 같은 알림 중복 배너 방지
       });
       n.onclick = () => { window.focus(); n.close(); };
@@ -321,7 +325,7 @@ export default function AppShell({ user, onSignOut, tasks, taskActions, tasksLoa
               }}><Bell size={16} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink3)", marginBottom: 2 }}>
-                  {fmtAlarm(a.hour)} 업무 알림
+                  {fmtAlarmFull(a.hour, a.offsetMin)} 업무 알림
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 600, wordBreak: "break-word" }}>{a.text}</div>
               </div>

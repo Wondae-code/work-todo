@@ -35,6 +35,7 @@ function rowToTask(row, subtasks = []) {
     date_key: row.date_key,
     done_at: row.done_at || null,
     alarm_hour: row.alarm_hour ?? null,
+    alarm_offset: row.alarm_offset ?? 0,
     subs: subtasks
       .filter((s) => s.task_id === row.id)
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -230,6 +231,7 @@ export function useTasks(userId) {
       date_key: t.date_key,
       done_at: t.done_at || null,
       alarm_hour: t.alarm_hour ?? null,
+      alarm_offset: t.alarm_offset ?? 0,
       subs: (t.subs || []).map((s) => ({ text: s.text, done: s.done, done_at: s.done_at || null })),
     }));
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -278,6 +280,7 @@ export function useTasks(userId) {
         const done = !!item.done;
         const done_at = item.done_at || null;
         const alarm_hour = item.alarm_hour ?? null;
+        const alarm_offset = item.alarm_offset ?? 0;
         const subs = item.subs || [];
 
         if (!userId) {
@@ -285,7 +288,7 @@ export function useTasks(userId) {
           setTasks((prev) => [
             ...prev,
             {
-              id: taskId, text, done, priority, type, date_key, done_at, alarm_hour,
+              id: taskId, text, done, priority, type, date_key, done_at, alarm_hour, alarm_offset,
               subs: subs.map((s, i) => ({ sid: taskId * 100 + i, text: s.text, done: !!s.done, done_at: s.done_at || null })),
             },
           ]);
@@ -295,7 +298,7 @@ export function useTasks(userId) {
 
         const { data, error } = await supabase
           .from("tasks")
-          .insert({ user_id: userId, text, done, priority, type, date_key, done_at, alarm_hour })
+          .insert({ user_id: userId, text, done, priority, type, date_key, done_at, alarm_hour, alarm_offset })
           .select()
           .single();
 

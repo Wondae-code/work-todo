@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Plus, Trash2, Check as CheckIcon, X, ChevronDown, GripVertical, ChevronUp, Bell } from "lucide-react";
 import AddProjectModal from "./AddProjectModal";
 import AlarmModal from "./AlarmModal";
-import { fmtAlarm } from "../hooks/useAlarms";
+import { fmtAlarm, fmtAlarmFull } from "../hooks/useAlarms";
 
 /* ── Palette — 9 swatches from Figma "참고" (Color Input reference column).
    `main` drives line/dot/accent; `text` is a darker readable variant for
@@ -1180,7 +1180,9 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
             <div style={{ width: COL_ALARM, display: "flex", justifyContent: "center" }}>
               <button
                 onClick={() => setAlarmSid(s.sid)}
-                title={s.deadline ? "알림 설정" : "목표 일자를 설정하면 알림이 울려요"}
+                title={s.alarm_hour != null
+                  ? `${fmtAlarmFull(s.alarm_hour, s.alarm_offset)} 알림`
+                  : s.deadline ? "알림 설정" : "목표 일자를 설정하면 알림이 울려요"}
                 style={{
                   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 3,
                   height: 20, minWidth: 50, padding: "0 6px",
@@ -1245,8 +1247,9 @@ function ProjectCard({ project, cardRef, onUpdate, onDelete, onAddSub, onUpdateS
         show={alarmSid != null}
         onClose={() => setAlarmSid(null)}
         alarmHour={project.subs.find((s) => s.sid === alarmSid)?.alarm_hour ?? null}
-        onPick={(hour) => {
-          onUpdateSub(alarmSid, { alarm_hour: hour });
+        alarmOffset={project.subs.find((s) => s.sid === alarmSid)?.alarm_offset ?? 0}
+        onPick={(hour, offsetMin = 0) => {
+          onUpdateSub(alarmSid, { alarm_hour: hour, alarm_offset: hour == null ? 0 : offsetMin });
           setAlarmSid(null);
           if (hour != null && "Notification" in window && Notification.permission === "default") {
             Notification.requestPermission();
