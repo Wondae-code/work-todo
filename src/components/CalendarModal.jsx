@@ -29,7 +29,7 @@ export default function CalendarModal({
   const [offsetInput, setOffsetInput] = useState("");
   // 입력 중에는 placeholder "0"을 숨긴다 — 가운데 정렬이라 커서와 겹쳐 보인다.
   const [offsetFocused, setOffsetFocused] = useState(false);
-  const [offsetDir, setOffsetDir] = useState(1); // 1 = 뒤(미래), -1 = 앞(과거)
+  const [offsetDir, setOffsetDir] = useState(1); // 1 = 후(미래), -1 = 전(과거)
   // 날짜 클릭은 "선택"까지만 하고, 확인을 눌러야 확정된다.
   const [draft, setDraft] = useState(selectedKey);
 
@@ -133,7 +133,7 @@ export default function CalendarModal({
           })}
         </div>
 
-        {/* N일 앞/뒤 — 오늘 기준으로 일수를 더하거나 뺀 날짜를 고른다 */}
+        {/* N일 전/후 — 오늘 기준으로 일수를 더하거나 뺀 날짜를 고른다 */}
         <div style={offsetRow}>
           <input
             type="text"
@@ -144,12 +144,12 @@ export default function CalendarModal({
             onFocus={() => setOffsetFocused(true)}
             onBlur={() => setOffsetFocused(false)}
             placeholder={offsetFocused ? "" : "0"}
-            aria-label="며칠 앞뒤"
+            aria-label="며칠 전후"
             style={offsetField}
           />
           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink2)" }}>일</span>
           <div style={dirGroup}>
-            {[["앞", -1], ["뒤", 1]].map(([label, d]) => (
+            {[["전", -1], ["후", 1]].map(([label, d]) => (
               <button
                 key={d}
                 onClick={() => setOffsetDir(d)}
