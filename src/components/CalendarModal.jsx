@@ -29,6 +29,7 @@ export default function CalendarModal({
   const [offsetInput, setOffsetInput] = useState("");
   // 입력 중에는 placeholder "0"을 숨긴다 — 가운데 정렬이라 커서와 겹쳐 보인다.
   const [offsetFocused, setOffsetFocused] = useState(false);
+  const [offsetDir, setOffsetDir] = useState(1); // 1 = 뒤(미래), -1 = 앞(과거)
   // 날짜 클릭은 "선택"까지만 하고, 확인을 눌러야 확정된다.
   const [draft, setDraft] = useState(selectedKey);
 
@@ -37,6 +38,7 @@ export default function CalendarModal({
     setDraft(selectedKey);
     setOffsetInput("");
     setOffsetFocused(false);
+    setOffsetDir(1);
   }, [show, selectedKey]);
 
   if (!show) return null;
@@ -74,7 +76,7 @@ export default function CalendarModal({
 
   const quickPick = (offset) => choose(dk(addDays(offset)));
 
-  const offsetDate = offsetInput === "" ? null : addDays(Number(offsetInput));
+  const offsetDate = offsetInput === "" ? null : addDays(Number(offsetInput) * offsetDir);
   const pickOffset = () => offsetDate && choose(dk(offsetDate));
 
   const confirm = () => draft && onPick(draft);
@@ -111,8 +113,8 @@ export default function CalendarModal({
                 onDoubleClick={() => onPick(c.key)}
                 style={{
                   position: "relative",
-                  width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center",
-                  borderRadius: "50%", fontSize: 13, fontWeight: 500, cursor: "pointer", margin: "0 auto",
+                  width: 42, height: 42, display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: "50%", fontSize: 14, fontWeight: 500, cursor: "pointer", margin: "0 auto",
                   color: isSel ? "#fff" : c.other ? "var(--ink3)" : "var(--ink)",
                   border: isToday && !isSel ? "2px solid var(--ink)" : "2px solid transparent",
                   background: isSel ? "var(--ink)" : "transparent",
@@ -131,7 +133,7 @@ export default function CalendarModal({
           })}
         </div>
 
-        {/* N일 뒤 — 오늘 기준으로 일수를 더한 날짜를 고른다 */}
+        {/* N일 앞/뒤 — 오늘 기준으로 일수를 더하거나 뺀 날짜를 고른다 */}
         <div style={offsetRow}>
           <input
             type="text"
@@ -142,11 +144,25 @@ export default function CalendarModal({
             onFocus={() => setOffsetFocused(true)}
             onBlur={() => setOffsetFocused(false)}
             placeholder={offsetFocused ? "" : "0"}
-            aria-label="며칠 뒤"
+            aria-label="며칠 앞뒤"
             style={offsetField}
           />
-          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink2)" }}>일 뒤</span>
-          <span style={{ flex: 1, borderTop: "1px dashed var(--bd)" }} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--ink2)" }}>일</span>
+          <div style={dirGroup}>
+            {[["앞", -1], ["뒤", 1]].map(([label, d]) => (
+              <button
+                key={d}
+                onClick={() => setOffsetDir(d)}
+                style={{
+                  ...dirBtn,
+                  background: offsetDir === d ? "var(--ink)" : "var(--sf)",
+                  color: offsetDir === d ? "#fff" : "var(--ink2)",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <button
             onClick={pickOffset}
             disabled={!offsetDate}
@@ -186,7 +202,7 @@ export default function CalendarModal({
           disabled={!draft}
           style={{ ...confirmBtn, opacity: draft ? 1 : 0.45, cursor: draft ? "pointer" : "default" }}
         >
-          {draft ? `${draft.slice(5, 7)}월 ${draft.slice(8, 10)}일로 설정` : "날짜를 선택하세요"}
+          {draft ? `${draft.slice(5, 7)}월 ${draft.slice(8, 10)}일로 가기` : "날짜를 선택하세요"}
         </button>
       </div>
     </div>
@@ -198,7 +214,7 @@ const overlay = {
   display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999,
 };
 const modal = {
-  background: "var(--sf)", borderRadius: 18, padding: 24, width: 320,
+  background: "var(--sf)", borderRadius: 18, padding: 24, width: 360,
   maxWidth: "90vw", boxShadow: "0 12px 40px rgba(0,0,0,.15)",
 };
 const closeBtn = {
@@ -218,8 +234,16 @@ const offsetField = {
   fontSize: 13, fontWeight: 600, background: "var(--sf)", color: "var(--ink)",
   textAlign: "center", fontFamily: "inherit", outline: "none",
 };
+const dirGroup = {
+  display: "flex", border: "1px solid var(--bd)", borderRadius: 8,
+  overflow: "hidden", flexShrink: 0,
+};
+const dirBtn = {
+  padding: "6px 10px", fontSize: 12, fontWeight: 600, border: "none",
+  cursor: "pointer", fontFamily: "inherit",
+};
 const offsetPickBtn = {
-  padding: "7px 10px", border: "1px solid var(--bd)", borderRadius: 8,
+  flex: 1, padding: "7px 10px", border: "1px solid var(--bd)", borderRadius: 8,
   fontSize: 12, fontWeight: 700, background: "var(--sf)",
   fontFamily: "inherit", fontVariantNumeric: "tabular-nums",
 };
